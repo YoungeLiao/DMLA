@@ -1,0 +1,252 @@
+---
+title: "Gene Panel Enrichment Analysis"
+author: "Yang"
+date: "2023-09-02"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+# DEMO1: Yellow light induced optogenetic denitrifier
+
+Optogenetic denitrifying microbiome based on metatranscriptomics.
+
+## Theme setting
+
+```{r ThemeBeautifyy}
+library(ggplot2)
+library(paletteer)
+
+top.mar=0.1
+right.mar=0.1
+bottom.mar=0.1
+left.mar=0.1
+mytheme <- theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5,size = 18, face = 'bold'),
+        axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16, face = 'bold'),
+        axis.text.x = element_text(size = 14, vjust = 0.5), # vjust = -0.001
+        legend.text = element_text(size = 12), 
+        legend.title = element_text(size = 16),
+        legend.position = 'none', 
+        plot.margin=unit(x=c(top.mar,right.mar,bottom.mar,left.mar),
+                         units="inches"))
+mytheme1 <- theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5,size = 18, face = 'bold'),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 14, face = 'bold'),
+        axis.text.x = element_text(size = 10, vjust = 0.5), # vjust = -0.001
+        legend.text = element_text(size = 12), 
+        legend.title = element_blank(),
+        legend.position = 'left', 
+        plot.margin=unit(x=c(top.mar,right.mar,bottom.mar,left.mar),
+                         units="inches"))
+
+# palette
+pale_8 <- as.vector(paletteer_d('RColorBrewer::Pastel2'))
+pale_9 <- as.vector(paletteer_d('ggprism::pastels'))
+pale_11 <- as.vector(paletteer_d('khroma::sunset'))
+pale_12 <- as.vector(paletteer_d('RColorBrewer::Set3'))
+pale_20 <- as.vector(paletteer_d('ggthemes::Tableau_20'))
+pale_25 <- c(pale_12, pale_11, '#85A4FE', 'grey')
+pale_28 <- c(pale_8, pale_11, pale_9)
+pale_29 <- c(pale_20, pale_9)
+pale_31 <- c(pale_8, pale_11, pale_12)
+pale_32 <- c(pale_12, pale_20)
+pale_33 <- c(pale_25, pale_8)
+Pale_51 <- as.vector(paletteer_d('ggsci::default_igv'))
+```
+
+## Prepare data
+
+### 1. basic preparation\*
+
+```{r}
+# --- setting parameters ---
+# dataset
+dataset <- 'LY_9samples_metatranscriptomics'
+group <- 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+Cluster = 'Cluster 3'
+# pvalue and statistic analysis
+ref_group <- 'Dark'
+annotation.level <- 'level3_pathway_name'
+
+# --- define path ---
+rpkm.path <- paste('../../', "data/", dataset, "/rawdata/RPKM.txt", sep = '')
+Cluster.path <- paste('../../',"data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '.csv', sep = '')
+group.path <- paste('../../', "data/", dataset, "/inputdata/group_rpkm.csv", sep = '')
+kegg_anno.path <- paste('../../', "data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '') 
+Enrichment.path <- paste('../../', 'data/', dataset, '/output_data/R/', SubDataset, '_', Cluster, '_Enrichment.csv', sep = '')
+
+# --- load data ---
+Cluster.data <- read.csv(Cluster.path, header = T)
+rpkm <- read.table(rpkm.path, sep='\t', header = T)
+group <- read.csv(group.path)
+
+# --- combine data ---
+rawdata <- merge(rpkm, Cluster.data[,-c(2:length(rpkm))], by = 'id')
+samples <- colnames(rawdata)[2:length(rpkm)]
+```
+
+### 2. Setting\*
+
+This part need manually define the samples for pathway mean expression levels calculation and significant analysis.
+
+```{r}
+library(dplyr)
+# library(tidyverse)
+pathway <- rawdata %>% 
+  group_by(level3_pathway_name) %>%
+  summarise(B1mean = mean(Blue1), 
+            B2mean = mean(Blue2),
+            B3mean = mean(Blue3),
+            D1mean = mean(Dark1), 
+            D2mean = mean(Dark2),
+            D3mean = mean(Dark3),
+            Y1mean = mean(Yellow1), 
+            Y2mean = mean(Yellow2),
+            Y3mean = mean(Yellow3)) 
+
+# re-orgainze data to be grouped by pathway
+# library(dplyr)
+# pathlist <- list()
+# for (i in 1:(length(rpkm)-1)){
+#   pathway.temp <- rawdata %>% 
+#   group_by(level3_pathway_name) %>%
+#   summarise(mean = mean(rawdata[samples[i]][[1]])) 
+#   pathlist[[i]] <- pathway.temp
+#   if (i == 1){
+#     pathway <- pathway.temp
+#   } else {
+#     pathway <- cbind(pathway, as.data.frame(pathway.temp['mean']))
+#   }
+# }
+# colnames(pathway) <- c('level3_pathway_name', samples)
+```
+
+### 3. Obtain p-value
+
+No parameter are needed to be set
+
+```{r}
+# --- obtain p-value ---
+# prepare data
+temp <- data.frame(t(pathway))
+colnames(temp) <- temp[1,]
+temp <- temp[-1,]
+name <- colnames(temp)
+library(ggpubr)
+temp <- data.frame(apply(temp[,1:(length(temp))], 2, as.numeric))
+temp$group <- group$Group
+# initial comparison
+compare_data <- temp[, c(1, length(temp))]
+colnames(compare_data) <- c('Pathway', 'group')
+result <- compare_means(Pathway~group, data = compare_data, ref.group = ref_group, 
+                        method = 't.test', 
+                        paired = FALSE)
+p_value <- data.frame(t(result$p))
+expre_group.temp <- unique(group$Group)
+loc <- match(ref_group, expre_group.temp)
+expre_group <- expre_group.temp[-loc]
+colnames(p_value) <- expre_group
+# loop
+for (i in 2:(length(temp)-1)){
+  compare_data <- temp[, c(i, length(temp))]
+  colnames(compare_data) <- c('Pathway', 'group')
+  result <- compare_means(Pathway ~ group, data = compare_data, ref.group = ref_group, 
+                          method = 't.test', 
+                          paired = FALSE)
+  p <- data.frame(t(result$p))
+  colnames(p) <- expre_group
+  p_value <- rbind(p_value, p)
+}
+
+rownames(p_value) <- name
+p_value$pathway <- rownames(p_value)
+
+colnames(p_value) <- c(paste('pvalue', colnames(p_value)[1:(length(p_value)-1)], sep = '_'), annotation.level)
+
+kegg_level3 <- merge(pathway, p_value, by = annotation.level)
+
+
+```
+
+### 4. Statistical settting
+
+This part need set the statistic parameters corresponding to the Setting\* part.
+
+```{r}
+# --- obtain other statistic parameters ---
+mean <- apply(pathway[,2:10], 1, mean)
+
+sd_B <- apply(pathway[,2:4], 1, sd)
+sd_D <- apply(pathway[,5:7], 1, sd)
+sd_Y <- apply(pathway[,8:10], 1, sd)
+
+mean_B <- apply(pathway[,2:4], 1, mean)
+mean_D <- apply(pathway[,5:7], 1, mean)
+mean_Y <- apply(pathway[,8:10], 1, mean)
+
+kegg_level3$YvsD <- mean_Y/mean_D
+kegg_level3$BvsD <- mean_B/mean_D
+kegg_level3$blue <- mean_B
+kegg_level3$dark <- mean_D
+kegg_level3$yellow <- mean_Y
+```
+
+## Filtering & Visualization\*
+
+This part need to set the threshold value for filtering, including p-value, fold change (upper and lower limit) and expression.
+
+```{r}
+# --- cluster3: pvalue, FC ---
+p_thre <- 0.2
+FC_up <- 2
+FC_down <- 0.5
+Expre <- 10
+Func_YvsD <- filter(kegg_level3, (kegg_level3$YvsD > FC_up | kegg_level3$YvsD < FC_down) &
+                      kegg_level3$pvalue_Yellow < p_thre &
+                      yellow > Expre)
+if (file.exists(Enrichment.path)){
+  print(paste('File', Enrichment.path, 'Exist.'))
+} else {
+  write.csv(Func_YvsD, Enrichment.path, row.names = FALSE)
+}
+
+plot_data <- Func_YvsD
+kegg_anno <- read.csv(kegg_anno.path)
+
+plot_data$KEGGBrite2 <- kegg_anno[match(plot_data$level3_pathway_name, kegg_anno$level3_pathway_name),]$level2_pathway_name
+data <- plot_data[, c(1, 11:18)]
+data$Expression <- apply(plot_data[,8:10], 1, mean)
+  
+library(ggrepel)
+p <- ggplot(data, aes(x = pvalue_Yellow, y = YvsD, size = Expression, color = KEGGBrite2)) +
+  geom_point(alpha=0.7)
+p <- p + geom_text_repel(data = data, 
+                    aes(pvalue_Yellow, y = YvsD,label = level3_pathway_name),
+                    size=4,color="grey20",
+                    point.padding = 0.5,hjust = 0.1,
+                    segment.color="grey20",
+                    segment.size=0.6,
+                    segment.alpha=0.8,
+                    nudge_x=0,
+                    nudge_y=0, 
+                    max.overlaps = 10
+                    ) + 
+  labs(x = 'P-value', y = 'Fold change', title = 'HGP of Yellow light (Cluster 3)')
+
+p + scale_size(range = c(2, 20), name="Expression") +
+  scale_color_manual(values = pale_20) + #'#006C75', #36CFC8',
+  mytheme1
+```
+
+### 
+
+# DEMO2: Blue light induced optogenetic denitrifier
+
+## 
+
+# DEMO3: Light induced Anammox

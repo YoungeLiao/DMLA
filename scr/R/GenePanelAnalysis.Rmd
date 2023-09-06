@@ -1,0 +1,183 @@
+---
+title: "Gene Panel Visualization"
+author: "Yang"
+date: "2023-09-02"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# DEMO1: Yellow light induced optogenetic denitrifier
+
+## Basic visualization setting
+
+```{r VisualizationSet}
+# packages
+library(Rtsne)
+library(ggplot2)
+library(RColorBrewer)
+library(paletteer)
+
+# theme
+top.mar=0.1
+right.mar=0.1
+bottom.mar=0.1
+left.mar=0.1
+mytheme <- theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5,size = 18, face = 'bold'),
+        axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16, face = 'bold'),
+        axis.text.x = element_text(size = 14, vjust = 0.5), # vjust = -0.001
+        legend.text = element_text(size = 12), 
+        legend.title = element_text(size = 16),
+        # axis.text = element_blank(), 
+        # axis.ticks = element_blank(), 
+        # axis.title = element_blank(), 
+        # legend.title = element_blank(),
+        # legend.position = c(0.1, 0.8), 
+        legend.position = 'none', 
+        # legend.background = element_blank(),
+        plot.margin=unit(x=c(top.mar,right.mar,bottom.mar,left.mar),
+                         units="inches"))
+mytheme1 <- theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5,size = 18, face = 'bold'),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 14, face = 'bold'),
+        axis.text.x = element_text(size = 10, vjust = 0.5), # vjust = -0.001
+        legend.text = element_text(size = 12), 
+        # legend.title = element_text(size = 16),
+        # axis.text = element_blank(), 
+        # axis.ticks = element_blank(), 
+        # axis.title = element_blank(), 
+        legend.title = element_blank(),
+        legend.position = 'left', 
+        # legend.position = 'none', 
+        # legend.background = element_blank(),
+        plot.margin=unit(x=c(top.mar,right.mar,bottom.mar,left.mar),
+                         units="inches"))
+# pallete 
+Pale_51 <- as.vector(paletteer_d('ggsci::default_igv'))
+pale_9_1 <- as.vector(paletteer_d('ggprism::pastels'))
+pale_20_2 <- as.vector(paletteer_d('ggthemes::Tableau_20'))
+pale_11_2 <- as.vector(paletteer_d('khroma::sunset'))
+pale_12_2 <- as.vector(paletteer_d('RColorBrewer::Set3'))
+pale_8_1 <- as.vector(paletteer_d('RColorBrewer::Pastel2'))
+pale_29 <- c(pale_20_2, pale_9_1)
+pale_28 <- c(pale_8_1, pale_11_2, pale_9_1)
+pale_31 <- c(pale_8_1, pale_11_2, pale_12_2)
+pale_32 <- c(pale_12_2, pale_20_2)
+pale_25 <- c(pale_12_2, pale_11_2, '#85A4FE', 'grey')
+pale_29 <- c(pale_25, pale_8_1)
+```
+
+## Load data
+
+```{r DataLoader}
+# --- load functional genes ---
+library(dplyr)
+# getwd() # check directory
+
+# setting parameters
+dataset <- 'LY_9samples_metatranscriptomics'
+group <- 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+
+# path
+phototransduction.path <- paste('../../',"data/", dataset, "/output_data/R/", SubDataset, '_', 'Phototransduction.csv', sep = '') 
+nitrogen.path <- paste('../../',"data/", dataset, "/output_data/R/", SubDataset, '_', 'nitrite.csv', sep = '') 
+graphdata.labeled.path <- paste('../../', "data/", dataset, "/inputdata/graphdata_", group, 'labeled.csv', sep = '')
+graphdata.path <- paste('../../',"data/", dataset, "/inputdata/graphdata_", group, '.csv', sep = '')
+
+# laod data
+tsne_result <- read.csv(graphdata.path)
+tsne_plot <- read.csv(graphdata.labeled.path)
+phototransduction <- read.csv(phototransduction.path)
+nitrogen <- read.csv(nitrogen.path)
+```
+
+## Labeling interested genes and labels
+
+The following demo defined the nitrogen metabolism genes, narK1, narG and aniA as interested genes, as well as genes that belong to transubstantiation pathways.
+
+```{r InterestedGenes}
+# nitrogen metabolism
+tsne_plot_nitrogen <- nitrogen[c(1,3,12), 2:3] # API: c(1, 3, 12), i.e. interested nitrogen metabolism genes, corresponding the following labels
+tsne_plot_nitrogen$label <- c('narK1 (Q9RA46)', 'narG (P09152)','aniA (Q9JTB8)')
+
+# phototransduction
+tsne_plot_phototrans <- phototransduction[, 2:3]
+tsne_plot_phototrans$label <- 'phototransduction'
+
+# cluster
+tsne_result$Cluster <- 'All DEGs'
+tsne_plot_cluster1 <- filter(tsne_plot, tsne_plot$Cluster == 'Cluster 1') 
+tsne_plot_cluster3 <- filter(tsne_plot, tsne_plot$Cluster == 'Cluster 3') 
+tsne_plot_cluster4 <- filter(tsne_plot, tsne_plot$Cluster == 'Cluster 4') 
+tsne_plot_cluster6 <- filter(tsne_plot, tsne_plot$Cluster == 'Cluster 6') 
+```
+
+## Plot
+
+Set palette
+
+```{r palette}
+pale_10 <- as.vector(paletteer_d('ggsci::default_jco'))
+background_pale1 <- c('grey', pale_10)
+background_pale2 <- c('grey', pale_9_1)
+background_pale3 <- c('grey', pale_8_1)
+background_pale4 <- c('grey', pale_20_2)
+background_pale5 <- c('grey', pale_11_2)
+background_pale6 <- c('grey', pale_20_2)
+# [1] "#8DD3C7FF" "#FFFFB3FF" "#BEBADAFF" "#FB8072FF" "#80B1D3FF" "#FDB462FF"
+# [7] "#B3DE69FF" "#FCCDE5FF" "#D9D9D9FF" "#BC80BDFF" "#CCEBC5FF" "#FFED6FFF"
+custo_color <- c('grey', '#FF69B4FF', "#8DD3C7FF", "#BEBADAFF", "#FB8072FF", "#FDB462FF",
+                 "#40E0D0FF",
+                 "#9370DBFF", "#FFED6FFF", '#1E90FFFF',
+                 "#80B1D3FF")
+```
+
+```{r Plot}
+p0 <- ggplot() +
+  geom_point(data = tsne_result, aes(tSNE1, tSNE2, color=Cluster), 
+             alpha = 0.1, size = 2) + 
+  geom_point(data = tsne_plot_cluster6 , aes(tSNE1, tSNE2, color=Cluster), alpha = 0.7, size = 2) + 
+  geom_point(data = tsne_plot_cluster4 , aes(tSNE1, tSNE2, color=Cluster), alpha = 0.7, size = 2) + 
+  geom_point(data = tsne_plot_cluster3 , aes(tSNE1, tSNE2, color=Cluster), alpha = 0.7, size = 2) + 
+  geom_point(data = tsne_plot_cluster1 , aes(tSNE1, tSNE2, color=Cluster), alpha = 0.7, size = 2) + 
+  geom_point(data = tsne_plot_phototrans , aes(tSNE1, tSNE2, color=label), alpha = 0.6, size = 3) + 
+  geom_point(data = tsne_plot_nitrogen , aes(tSNE1, tSNE2, color=label), alpha = 0.6, size = 3) + 
+  labs(title = 'DEGs of yellow light') + 
+  scale_color_manual(values = custo_color) + 
+  theme_bw() + 
+  mytheme1
+library(ggrepel)
+
+p1 <- p0 + geom_text_repel(data=tsne_plot_phototrans, aes(tSNE1, tSNE2, label=label),
+                           force=20,color="grey20",
+                           size=4,
+                           point.padding = 0.5,hjust = 0.5,
+                           # arrow = arrow(length = unit(0.01, "npc"),
+                           #               type = "open", ends = "last"),
+                           segment.color="grey20",
+                           segment.size=0.6,
+                           segment.alpha=0.8,
+                           nudge_x=0,
+                           nudge_y=0
+)
+p2 <- p1 + geom_text_repel(data=tsne_plot_nitrogen, aes(tSNE1, tSNE2, label=label),
+                           force=20,color="grey20",
+                           size=4,
+                           point.padding = 0.5,hjust = 0.5,
+                           # arrow = arrow(length = unit(0.01, "npc"),
+                           #               type = "open", ends = "last"),
+                           segment.color="grey20",
+                           segment.size=0.6,
+                           segment.alpha=0.8,
+                           nudge_x=0,
+                           nudge_y=0
+)
+
+p2
+```
+
+# DEMO2: Blue light induced optogenetic denitrifier

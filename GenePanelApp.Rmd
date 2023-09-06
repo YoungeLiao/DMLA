@@ -1,0 +1,988 @@
+---
+title: "Gene Panel Visualization"
+author: "Yang"
+date: "2023-09-02"
+output:
+  html_document: default
+  pdf_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Define function & basic setting
+
+### VisualizationSet
+
+```{r VisualizationSet}
+library(Rtsne)
+library(ggplot2)
+library(RColorBrewer)
+library(paletteer)
+
+# theme
+top.mar=0.1
+right.mar=0.1
+bottom.mar=0.1
+left.mar=0.1
+mytheme <- theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5,size = 18, face = 'bold'),
+        axis.text = element_text(size = 14),
+        axis.title = element_text(size = 16, face = 'bold'),
+        axis.text.x = element_text(size = 14, vjust = 0.5), # vjust = -0.001
+        legend.text = element_text(size = 12), 
+        legend.title = element_text(size = 16),
+        legend.position = 'none', 
+        plot.margin=unit(x=c(top.mar,right.mar,bottom.mar,left.mar),
+                         units="inches"))
+
+mytheme1 <- theme_classic() +
+  theme(plot.title = element_text(hjust = 0.5,size = 18, face = 'bold'),
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 14, face = 'bold'),
+        axis.text.x = element_text(size = 10, vjust = 0.5), # vjust = -0.001
+        legend.text = element_text(size = 12), 
+        # legend.title = element_blank(),
+        legend.title = element_text(size = 16),
+        legend.position = 'right', 
+        plot.margin=unit(x=c(top.mar,right.mar,bottom.mar,left.mar),
+                         units="inches"))
+
+# pallete 
+Pale_51 <- as.vector(paletteer_d('ggsci::default_igv'))
+pale_9_1 <- as.vector(paletteer_d('ggprism::pastels'))
+pale_20_2 <- as.vector(paletteer_d('ggthemes::Tableau_20'))
+pale_11_2 <- as.vector(paletteer_d('khroma::sunset'))
+pale_12_2 <- as.vector(paletteer_d('RColorBrewer::Set3'))
+pale_8_1 <- as.vector(paletteer_d('RColorBrewer::Pastel2'))
+pale_29 <- c(pale_20_2, pale_9_1)
+pale_28 <- c(pale_8_1, pale_11_2, pale_9_1)
+pale_31 <- c(pale_8_1, pale_11_2, pale_12_2)
+pale_32 <- c(pale_12_2, pale_20_2)
+pale_25 <- c(pale_12_2, pale_11_2, '#85A4FE', 'grey')
+pale_29 <- c(pale_25, pale_8_1)
+
+pale_10 <- as.vector(paletteer_d('ggsci::default_jco'))
+pale_51 <- as.vector(paletteer_d('ggsci::default_igv'))
+cluster_pale <- c('#8DD3C7FF','#BEBADAFF',"#FB8072FF", "#FDB462FF")
+```
+
+### basic_var(): obtain basic variables
+
+Basic variables:
+
+-   label_path,
+
+-   output_path
+
+-   graphdata.path
+
+-   fig.path
+
+-   kegg_anno.path
+
+-   Sub_Swiss.path,
+
+-   graphdata,
+
+-   labels,
+
+-   kegg_anno,
+
+-   Sub_Swiss,
+
+-   matched_swiss,
+
+-   matched_kegg
+
+```{r basic_var}
+basic_var <- function(dataset, group, SubDataset){
+  # --- define path ---
+  label_path <- paste("./data/", dataset, '/output_data/', SubDataset, '/generated_data/types.txt', sep = '')
+  output_path <- paste("./data/", dataset, "/inputdata/", sep = '') 
+  graphdata.path <- paste("./data/", dataset, "/inputdata/graphdata_", group, '.csv', sep = '')
+  fig.path <- paste("./data/", dataset, "/output_data/Figures", sep = '') 
+  graphdata.labeled.path <- paste("./data/", dataset, "/inputdata/graphdata_", group, 'labeled.csv', sep = '')
+  # annotation
+  kegg_anno.path <- paste("./data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '') 
+  Sub_Swiss.path <- paste("./data/", dataset, "/inputdata/SubSwissExpre.csv", sep = '') 
+  # --- load data ---
+  graphdata <- read.csv(graphdata.path, header = TRUE)
+  labels <- paste('Cluster',as.vector(apply(read.table(label_path, sep='\t', header = F)+1, 2, as.factor)))
+  graphdata$Cluster <- labels
+  
+  # save labeled data
+  if (file.exists(graphdata.labeled.path)){
+    print(paste("File", graphdata.labeled.path, "exists."))
+  } else {
+    write.csv(graphdata, graphdata.labeled.path, row.names = FALSE)
+  }
+  
+  # load kegg annotation
+  if (file.exists(kegg_anno.path)){
+      kegg_anno <- read.csv(kegg_anno.path)
+      matched_kegg <- merge(graphdata[,-(length(graphdata)-2)], kegg_anno, by = 'id')
+      Sub_Swiss = NA
+      matched_swiss = NA
+  } else {
+        print('Skipped: lack of kegg annotation data.')
+      }
+  
+  if (file.exists(Sub_Swiss.path)){
+    Sub_Swiss <- read.csv(Sub_Swiss.path)
+    matched_swiss <- merge(graphdata[-c((length(graphdata)-4):(length(graphdata)-1))], Sub_Swiss, by = 'id')
+    matched_kegg <- merge(matched_swiss, kegg_anno, by = 'id')
+  }
+  
+  # return var list 
+  var_list <- list(label_path, output_path, graphdata.path, fig.path, kegg_anno.path, 
+                   Sub_Swiss.path,
+                   graphdata, labels, 
+                   kegg_anno, Sub_Swiss,
+                   matched_swiss, matched_kegg)
+  return(var_list)
+}
+```
+
+### Clustering()
+
+```{r ClusteringPlot}
+Clustering <- function(dataset, group, SubDataset){
+  
+  varlist <- basic_var(dataset, group, SubDataset)
+  # # --- define path ---
+  # label_path <- varlist[[1]]
+  # output_path <- varlist[[2]]
+  # graphdata.path <- varlist[[3]]
+  # fig.path <- varlist[[4]]
+    
+  # --- load data ---
+  graphdata <- varlist[[7]]
+  labels <- varlist[[8]]
+  
+  # --- visualization ---
+  library(tidyverse)
+  library(cowplot)
+  library(ggplot2)
+  p <- ggplot(graphdata, aes(tSNE1,tSNE2, colour = Cluster)) +
+    geom_point(size=2, alpha = 0.8) +
+    # stat_ellipse(mapping=aes(group = Cluster,colour = Cluster), #分组边界圈
+    #              geom = "path", # other: polygon
+    #              linetype = 2,
+    #              size=0.6,
+    #              alpha=0.5) +
+    xlab(NULL) +
+    ylab(NULL) +
+    theme_cowplot() +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      legend.title = element_blank(),
+      panel.border = element_blank(),
+      axis.line.x = element_line(color = "black", size = 0.5),
+      axis.line.y = element_line(color = "black", size = 0.5),
+      panel.background = element_blank()
+    ) +
+    scale_colour_manual(values = pale_25)
+    
+  fig.path <- paste("./data/", dataset, "/output_data/Figures", sep = '') 
+  ggsave(filename = paste('ClusteringLabeled_', group,'.pdf', sep = ''), width = 6, height = 5, units = 'in', path = fig.path)
+  return(p)
+}
+```
+
+### Annotation(): Extract Panels with interested annotation info
+
+```{r ExtractPanels}
+
+Annotation <- function(dataset, group, SubDataset, 
+                       GeneSet_bykegg=0,
+                       GeneSet_byswiss=0, 
+                       GeneSet_bycluster=0){
+  "
+  return: only save data in output path
+  "
+  # load data
+  var_list <- basic_var(dataset, group, SubDataset)
+  matched_kegg <- varlist[[length(varlist)]]
+  
+  # extract and save gene set
+  if (GeneSet_bycluster[[1]] != 0){
+    # --- extract functional gene set by cluster ---
+    # -- cluster 1 --
+    for (i in 1:length(GeneSet_bycluster)){
+      Cluster <- filter(matched_kegg, matched_kegg$Cluster == GeneSet_bycluster[[i]]) 
+      ### save data
+      print(paste('The total gene number of', GeneSet_bycluster[[i]], 'is:', length(unique(Cluster$id))) ) # 26 genes in total 
+      output_path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', GeneSet_bycluster[[i]], '.csv', sep = '') 
+      write.csv(Cluster, output_path, row.names = FALSE)
+    }
+  } else if (GeneSet_byswiss[[1]] != 0){
+    # --- extract functional gene set by gene name ---
+    for (i in 1:length(GeneSet_byswiss)){
+      for (j in 1:length(GeneSet_byswiss[[i]])){
+        result.temp <- matched_kegg[grepl(GeneSet_byswiss[[i]][j], matched_kegg$SwissProt_Description), ] 
+        if (j == 1){
+          result <- result.temp
+        } else{
+          result <- rbind(result, result.temp)
+        }
+      }
+      print(paste('The total gene number of', GeneSet_byswiss[[i]], 'is:', length(unique(result$id))) ) # 26 genes in total 
+      output_path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', GeneSet_byswiss[[i]][j], '.csv', sep = '') 
+      write.csv(result, output_path, row.names = FALSE)
+    }
+  } else if (GeneSet_bykegg[[1]] != 0){
+    # --- extract functional gene set by gene name ---
+    for (i in 1:length(GeneSet_bykegg)){
+      for (j in 1:length(GeneSet_bykegg[[i]])){
+        result.temp <- matched_kegg[grepl(GeneSet_bykegg[[i]][j], matched_kegg$level3_pathway_name), ] 
+        if (j == 1){
+          result <- result.temp
+        } else{
+          result <- rbind(result, result.temp)
+        }
+      }
+      print(paste('The total gene number of', GeneSet_bykegg[[i]], 'is:', length(unique(result$id))) ) # 26 genes in total 
+      output_path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', GeneSet_bykegg[[i]][j], '.csv', sep = '') 
+      write.csv(result, output_path, row.names = FALSE)
+    }
+  }
+}
+
+```
+
+### obtain_pathdata()
+
+```{r ObtainPathway}
+# --- define path ---
+obtain_pathdata <- function(dataset, group, SubDataset, 
+                            Cluster){
+  rpkm.path <- paste('./data/', dataset, "/rawdata/RPKM.txt", sep = '')
+  Cluster.path <- paste('./data/', dataset, "/output_data/R/", SubDataset, '_', Cluster, '.csv', sep = '')
+  group.path <- paste('./data/', dataset, "/inputdata/group.csv", sep = '')
+  kegg_anno.path <- paste('./data/', dataset, "/rawdata/kegg_annotation_all.csv", sep = '') 
+  Enrichment.path <- paste('./data/', dataset, '/output_data/R/', SubDataset, '_', Cluster, '_Enrichment.csv', sep = '')
+  
+  # --- load data ---
+  Cluster.data <- read.csv(Cluster.path, header = T)
+  rpkm <- read.table(rpkm.path, sep='\t', header = T)
+  group <- read.csv(group.path)
+  
+  # --- combine data ---
+  rawdata <- merge(rpkm, Cluster.data[,-c(2:length(rpkm))], by = 'id')
+  samples <- colnames(rawdata)[2:length(rpkm)]
+  print('The samples and groups are as follows:')
+  print(samples)
+  print(group)
+  return (rawdata)
+}
+
+```
+
+### obtain_pvalue()
+
+```{r}
+obtain_pvalue <- function(dataset, ref_group, group_sample.data, pathway, annotation.level){
+
+  # prepare data
+  group <- group_sample.data
+  temp <- data.frame(t(pathway))
+  colnames(temp) <- temp[1,]
+  temp <- temp[-1,]
+  name <- colnames(temp)
+  
+  library(ggpubr)
+  temp <- data.frame(apply(temp[,1:(length(temp))], 2, as.numeric))
+  temp$group <- group$Group
+  
+  # initial comparison
+  compare_data <- temp[, c(1, length(temp))]
+  colnames(compare_data) <- c('Pathway', 'group')
+  result <- compare_means(Pathway~group, data = compare_data, ref.group = ref_group, 
+                          method = 't.test', 
+                          paired = FALSE)
+  p_value <- data.frame(t(result$p))
+  expre_group.temp <- unique(group$Group)
+  loc <- match(ref_group, expre_group.temp)
+  expre_group <- expre_group.temp[-loc]
+  colnames(p_value) <- expre_group
+  # loop
+  for (i in 2:(length(temp)-1)){
+    compare_data <- temp[, c(i, length(temp))]
+    colnames(compare_data) <- c('Pathway', 'group')
+    result <- compare_means(Pathway ~ group, data = compare_data, ref.group = ref_group, 
+                            method = 't.test', 
+                            paired = FALSE)
+    p <- data.frame(t(result$p))
+    colnames(p) <- expre_group
+    p_value <- rbind(p_value, p)
+  }
+  
+  rownames(p_value) <- name
+  p_value$pathway <- rownames(p_value)
+  
+  colnames(p_value) <- c(paste('pvalue', colnames(p_value)[1:(length(p_value)-1)], sep = '_'), annotation.level)
+  
+  df.pathlevel_p <- merge(pathway, p_value, by = annotation.level)
+  
+  return(df.pathlevel_p)
+}
+```
+
+### ObtainStatistic()
+
+```{r ObtainStatistic}
+ObtainStatistic <- function(pathway, df.pathlevel_p, group_sample.data){
+  mean <- apply(pathway[,2:(length(pathway)-1)], 1, mean)
+  mean_list <- list()
+  sd_list <- list()
+  for (i in 1:((length(pathway)-1)/3)){
+    sd.temp <- as.data.frame(apply(pathway[,(i*3-1):(i*3+1)], 1, sd))
+    mean.temp <- as.data.frame(apply(pathway[,(i*3-1):(i*3+1)], 1, mean))
+    sd_list[i] <- sd.temp
+    mean_list[i] <- mean.temp
+  }
+  
+  for (i in 2:((length(pathway)-1)/3)){
+    df.pathlevel_p[SubDataset] <- mean_list[[i]]/mean_list[[1]]
+    df.pathlevel_p[unique(group_sample.data$Group)[i]] <- mean_list[[i]]
+  }
+  return(df.pathlevel_p)
+}
+
+```
+
+###  last_chara: for data processing
+
+```{r last_chara}
+last_chara <- function(string, chara=';'){
+  result <- sub(paste0(".*", chara), "", string)
+  return (result)
+}
+
+```
+
+### enrich()
+
+```{r Enrichment analysis}
+enrich <- function(df.pathlevel_p, SubDataset, dataset, Cluster,
+                   p_thre, FC_up, FC_down, Expre,
+                   group_sample.data){
+  Path.filtered <- filter(df.pathlevel_p, (df.pathlevel_p[SubDataset] > FC_up | df.pathlevel_p[SubDataset] < FC_down) & 
+                            df.pathlevel_p[colnames(df.pathlevel_p[length(df.pathlevel_p)-2])] < p_thre & 
+                            df.pathlevel_p[colnames(df.pathlevel_p[length(df.pathlevel_p)])] > Expre) 
+  
+  Enrichment.path <- paste('./data/', dataset, '/output_data/R/', SubDataset, '_', Cluster, '_Enrichment.csv', sep = '')
+  if (file.exists(Enrichment.path)){
+  print(paste('File', Enrichment.path, 'Exist.'))
+} else {
+  write.csv(Path.filtered, Enrichment.path, row.names = FALSE)
+}
+  plot_data <- Path.filtered
+  kegg_anno <- read.csv(paste("./data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '')) 
+  
+  # match to obtain kegglevel2 labels
+  plot_data$KEGGBrite2 <- kegg_anno[match(plot_data$level3_pathway_name, kegg_anno$level3_pathway_name),]$level2_pathway_name
+  
+  # extract the last level (after ';')
+  plot_data$kegglevel3 <- apply(plot_data['level3_pathway_name'], 2, last_chara)
+  plot_data$kegglevel2 <- apply(plot_data['KEGGBrite2'], 2, last_chara)
+  
+  # obtain data for visualization
+  start_index <- length(group_sample.data$Samples)+2
+  data <- plot_data[, c(1, start_index:(start_index+5))]
+  data$Expression <- apply(plot_data[,(start_index-3):(start_index-1)], 1, mean)
+  
+  colnames(data) <- c('level3_pathway_name', 'pvalue', 'FoldChange', 'NHQ_mean', 'KEGGBrite2', 'kegglevel3', 'kegglevel2', 'Expression')
+  
+  # visualization
+  library(ggrepel)
+  p <- ggplot(data, aes(x = pvalue, y = FoldChange, size = Expression, color = kegglevel2)) +
+    geom_point(alpha=0.7)
+  p <- p + geom_text_repel(data = data, 
+                      aes(pvalue, y = FoldChange, label = kegglevel3),
+                      size=4,color="grey20",
+                      point.padding = 0.5,hjust = 0.1,
+                      segment.color="grey20",
+                      segment.size=0.6,
+                      segment.alpha=0.8,
+                      nudge_x=0,
+                      nudge_y=0, 
+                      max.overlaps = 10
+                      ) + 
+    labs(x = 'P-value', y = 'Fold change', title = fig.name)
+  
+  fig <- p + scale_size(range = c(2, 20), name="Expression") +
+    scale_color_manual(values = pale_20_2) + #'#006C75', #36CFC8',
+    mytheme1
+  
+  fig.path <- paste("./data/", dataset, "/output_data/Figures", sep = '') 
+  ggsave(filename = paste('Enrichment_', SubDataset,'.pdf', sep = ''), width = 10, height = 7.5, units = 'in', path = fig.path)
+  
+  return(fig)
+}
+```
+
+### GPsEnrichCompare()
+
+```{r GPsEnrichCompare}
+GPsEnrichCompare <- function(dataset, group, SubDataset, k=7){
+  '
+  :para k: the number of cluster
+  '
+  # labeling gene panels
+  plotdata_cluster.list <- list()
+  for (i in 1:k){
+    Cluster <- paste('Cluster', i)
+    cluster_path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '_Enrichment.csv', sep = '') 
+    plotdata_cluster.list[[i]] <- read.csv(cluster_path)
+    plotdata_cluster.list[[i]]$Cluster <- Cluster
+    if (i == 1){
+      plotdata_cluster <- as.data.frame(plotdata_cluster.list[[1]])
+    } else {
+      plotdata_cluster <- rbind(plotdata_cluster, plotdata_cluster.list[[i]])
+    }
+  }
+
+  # prepare plot data
+  plotdata_cluster$Expression <- apply(plotdata_cluster[,7:9], 1, mean)
+  plotdata <- plotdata_cluster[,-c(2:7)]
+  colnames(plotdata) <- c('level3_pathway_name', 'pvalue', 'FoldChange', group, 'Cluster', 'Expression')
+  
+  # plot
+  library(ggrepel)
+  p <- ggplot(plotdata,  
+              aes(x = pvalue, y = FoldChange, size = Expression, color = Cluster)) +
+    geom_point(alpha=0.7)
+  p <- p + geom_text_repel(data = plotdata, 
+                           aes(pvalue, y = FoldChange,label = level3_pathway_name),
+                           size=4,color="grey20",
+                           point.padding = 0.5,hjust = 0.1,
+                           segment.color="grey20",
+                           segment.size=0.6,
+                           segment.alpha=0.8,
+                           nudge_x=0,
+                           nudge_y=0, 
+                           max.overlaps = 11
+  ) + 
+    labs(x = 'P-value', y = 'Fold change', title = group)
+
+  p <- p + scale_size(range = c(1, 15), name="Expression") +
+    scale_color_manual(values = pale_10) +
+    mytheme1
+  
+  # save fig
+  fig.path <- paste("./data/", dataset, "/output_data/Figures", sep = '') 
+  ggsave(filename = paste('GPsErichComparison_', group,'.pdf', sep = ''), width = 9, height = 8, units = 'in', path = fig.path)
+  
+  return(p)
+}
+```
+
+# DEMO1: Yellow light induced optogenetic denitrifier
+
+## APP 1: 2D-Visualization of gene panels (cluster)
+
+```{r}
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+
+varlist <- basic_var(dataset, group, SubDataset)
+p <- Clustering(dataset, group, SubDataset)
+p
+```
+
+```{r DataLoader}
+# --- load functional genes ---
+library(dplyr)
+
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+
+varlist <- basic_var(dataset, group, SubDataset)
+
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
+GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
+GeneSet_bykegg <- list(c('Phototransduction'))
+
+Annotation(dataset, group, SubDataset, GeneSet_bykegg,
+           GeneSet_byswiss=0, 
+           GeneSet_bycluster=0)
+Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
+           GeneSet_byswiss=0, 
+           GeneSet_bycluster)
+
+```
+
+## APP2: Panel enrichment analysis
+
+```{r Cluster Analysis}
+# rm(list=ls()) 
+# --- setting parameters ---
+# *dataset
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+Cluster = 'Cluster 3' 
+
+# *set basic data for p-value and other statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Yellow'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+annotation.level <- 'level3_pathway_name'
+# === pvalue and statistic analysis ===
+rawdata <- obtain_pathdata(dataset, group, SubDataset, 
+                            Cluster)
+
+# *setting for visualization app
+fig.name <- paste('HGP of ', group_sample, sep = '')
+  
+# --- obtain expression level by pathway ---
+library(dplyr)
+pathway <- rawdata %>% 
+  group_by(level3_pathway_name) %>%
+  summarise(Dark1mean = mean(Dark1), 
+            Dark2mean = mean(Dark2),
+            Dark3mean = mean(Dark3),
+            Yellow1mean = mean(Yellow1), 
+            Yellow2mean = mean(Yellow2),
+            Yellow3mean = mean(Yellow3)) 
+
+# --- obtain p-value ---
+df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+
+# --- obtain other statistic parameters ---
+df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
+
+# *set threshod for filtering
+p_thre <- 0.2
+FC_up <- 2
+FC_down <- 0.5
+Expre <- 10
+
+# --- conduct enrichment analysis ---
+fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
+                   p_thre, FC_up, FC_down, Expre,
+                   group_sample.data)
+fig
+
+```
+
+## APP3: Interested functions & genes analysis among gene panels
+
+To conduct gene panels comparison, enrichment analysis of targeted panel
+is a prerequisite. Please make sure to have used APP2 for enrichment
+analysis with proper threshold.
+
+-   In default, all the clusters are compared.
+
+```{r GPsEnrichComparison}
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+
+p <- GPsEnrichCompare(dataset, group, SubDataset, k=7) 
+p
+```
+
+## APP4: Topology Network with landmark genes regulatory strategy
+
+From app3, we can identify the Hub Gene Panels (HGPs) and Signaling Gene
+Panels (HGPs).
+
+-   HGP
+
+-   SGP
+
+To better regulate the microbiome, we construct regulatory network, also
+called interaction network, on the genes level based on microbial
+genetic topology.
+
+# DEMO2: Yellow light induced denitrifier based on metagenomics
+
+### Graph Learning Results
+
+-   The gene panels are obtained after 20000 epochs
+
+    feature shape: (5, 57)
+
+    cuda is not available
+
+    Threshold: 4
+
+    Links number: 541
+
+    Average Links: 9.491228070175438
+
+    Adj: (57, 57) Edges: 541
+
+    X: (57, 5)
+
+-   Result; SCI score (Clustering quality) is: 0.59939337
+
+-   Tips: increase threshold will bring about more edges, that more
+    information can be passed to the neighboring nodes, while the
+    calculation time will also be longer and probably lead to
+    over-fitting.
+
+### APP1: 2D-Visualization of gene panels (cluster)
+
+```{r}
+# rm(list=ls()) 
+# --- load functional genes ---
+library(dplyr)
+
+# setting parameters
+dataset = 'LY_15samples_metagenomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'Yellow_vs_Dark'
+
+varlist <- basic_var(dataset, group, SubDataset)
+p <- Clustering(dataset, group, SubDataset)
+p
+```
+
+### APP2
+
+-   output:
+
+```         
+[1] "The total gene number of Cluster 1 is: 7"
+[1] "The total gene number of Cluster 2 is: 9"
+[1] "The total gene number of Cluster 3 is: 3"
+[1] "The total gene number of Cluster 4 is: 7"
+[1] "The total gene number of Cluster 5 is: 15"
+[1] "The total gene number of Cluster 6 is: 8"
+[1] "The total gene number of Cluster 7 is: 8"
+```
+
+```{r}
+# rm(list=ls()) 
+dataset = 'LY_15samples_metagenomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'Yellow_vs_Dark'
+
+varlist <- basic_var(dataset, group, SubDataset)
+
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
+# GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
+# GeneSet_bykegg <- list(c('Phototransduction'))
+
+# Annotation(dataset, group, SubDataset, GeneSet_bykegg,
+#            GeneSet_byswiss=0, 
+#            GeneSet_bycluster=0)
+Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
+           GeneSet_byswiss=0, 
+           GeneSet_bycluster)
+
+```
+
+```{r Cluster Analysis}
+# rm(list=ls()) 
+# --- setting parameters ---
+# *dataset
+dataset = 'LY_15samples_metagenomics'
+group = 'Yellow_vs_Dark'
+SubDataset <- 'Yellow_vs_Dark'
+Cluster = 'Cluster 5' 
+
+# *set basic data for p-value and other statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Yellow'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+annotation.level <- 'level3_pathway_name'
+# === pvalue and statistic analysis ===
+rawdata <- obtain_pathdata(dataset, group, SubDataset, 
+                            Cluster)
+
+# *setting for visualization app
+fig.name <- paste('HGP of ', group_sample, sep = '')
+  
+# --- obtain expression level by pathway ---
+library(dplyr)
+pathway <- rawdata %>% 
+  group_by(level3_pathway_name) %>%
+  summarise(Dark1mean = mean(D1A), 
+            Dark2mean = mean(D2A),
+            Dark3mean = mean(D3A),
+            Yellow1mean = mean(Y1A), 
+            Yellow2mean = mean(Y2A),
+            Yellow3mean = mean(Y3A)) 
+
+# --- obtain p-value ---
+df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+
+# --- obtain other statistic parameters ---
+df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
+
+# *set threshod for filtering
+p_thre <- 0.275
+FC_up <- 1
+FC_down <- 1
+Expre <- 0
+
+# --- conduct enrichment analysis ---
+fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
+                   p_thre, FC_up, FC_down, Expre,
+                   group_sample.data)
+fig
+```
+
+# DEMO3: Blue light induced metagenomics
+
+### Graph learning
+
+feature shape: (5, 88)
+
+cuda is not available
+
+Threshold: 2
+
+Links number: 1040
+
+Average Links: 11.818181818181818
+
+Adj: (88, 88) Edges: 1040
+
+X: (88, 5)
+
+-   SCI score (Clustering quality) is: 0.60509825
+
+### APP1: 2D-Visualization of gene panels (cluster)
+
+```{r}
+# --- load functional genes ---
+library(dplyr)
+
+# setting parameters
+dataset = 'LY_15samples_metagenomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'Blue_vs_Dark'
+
+varlist <- basic_var(dataset, group, SubDataset)
+p <- Clustering(dataset, group, SubDataset)
+p
+```
+
+```         
+[1] "The total gene number of Cluster 1 is: 19"
+[1] "The total gene number of Cluster 2 is: 10"
+[1] "The total gene number of Cluster 3 is: 7"
+[1] "The total gene number of Cluster 4 is: 20"
+[1] "The total gene number of Cluster 5 is: 8"
+[1] "The total gene number of Cluster 6 is: 11"
+[1] "The total gene number of Cluster 7 is: 13"
+```
+
+```{r Annotation, extract cluster}
+# setting parameters
+dataset = 'LY_15samples_metagenomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'Blue_vs_Dark'
+
+varlist <- basic_var(dataset, group, SubDataset)
+
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
+# GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
+# GeneSet_bykegg <- list(c('Phototransduction'))
+
+# Annotation(dataset, group, SubDataset, GeneSet_bykegg,
+#            GeneSet_byswiss=0, 
+#            GeneSet_bycluster=0)
+Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
+           GeneSet_byswiss=0, 
+           GeneSet_bycluster)
+```
+
+### APP2: Panel enrichment analysis
+
+-   'group_blue.csv ' need to be manually created
+
+```{r Cluster Analysis}
+# rm(list=ls()) 
+# --- setting parameters ---
+# *dataset
+dataset = 'LY_15samples_metagenomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'Blue_vs_Dark'
+Cluster = 'Cluster 4' # 410 genes
+
+# *set basic data for p-value and other statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Blue'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+annotation.level <- 'level3_pathway_name'
+# === pvalue and statistic analysis ===
+rawdata <- obtain_pathdata(dataset, group, SubDataset, 
+                            Cluster)
+
+# *setting for visualization app
+fig.name <- paste('HGP of ', group_sample, sep = '')
+  
+# --- obtain expression level by pathway ---
+library(dplyr)
+pathway <- rawdata %>% 
+  group_by(level3_pathway_name) %>%
+  summarise(Dark1mean = mean(D1A), 
+            Dark2mean = mean(D2A),
+            Dark3mean = mean(D3A),
+            Blue1mean = mean(B1A), 
+            Blue2mean = mean(B2A),
+            Blue3mean = mean(B3A)) 
+
+# --- obtain p-value ---
+df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+
+# --- obtain other statistic parameters ---
+df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
+
+# *set threshod for filtering
+p_thre <- 0.275
+FC_up <- 1
+FC_down <- 1
+Expre <- 0
+
+# --- conduct enrichment analysis ---
+fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
+                   p_thre, FC_up, FC_down, Expre,
+                   group_sample.data)
+fig
+```
+
+# DEMO4: EES-NHQ
+
+### Graoh learning
+
+dataset_name = 'ZJ_12samplesEES_metagenomics'
+
+group = 'NHQ_vs_Control'
+
+feature shape: (5, 964)
+
+cuda is not available
+
+Threshold: 1
+
+Links number: 12492
+
+Average Links: 12.95850622406639
+
+Adj: (964, 964) Edges: 12492
+
+X: (964, 5)
+
+-   SCI score (Clustering quality) is: 0.5108492
+
+### APP1: 2D-Visualization of gene panels (cluster)
+
+```{r}
+rm(list=ls()) 
+# setting parameters
+dataset = 'ZJ_12samplesEES_metagenomics'
+group = 'NHQ_vs_Control'
+SubDataset <- 'NHQ_vs_Control'
+
+varlist <- basic_var(dataset, group, SubDataset)
+p <- Clustering(dataset, group, SubDataset)
+p
+```
+
+-   Output
+
+    ```         
+    [1] "The total gene number of Cluster 1 is: 213"
+    [1] "The total gene number of Cluster 2 is: 64"
+    [1] "The total gene number of Cluster 3 is: 58"
+    [1] "The total gene number of Cluster 4 is: 410"
+    [1] "The total gene number of Cluster 5 is: 8"
+    [1] "The total gene number of Cluster 6 is: 3"
+    [1] "The total gene number of Cluster 7 is: 15"
+    ```
+
+```{r Annotation, extract cluster}
+# setting parameters
+dataset = 'ZJ_12samplesEES_metagenomics'
+group = 'NHQ_vs_Control'
+SubDataset <- 'NHQ_vs_Control'
+
+varlist <- basic_var(dataset, group, SubDataset)
+
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
+# GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
+# GeneSet_bykegg <- list(c('Phototransduction'))
+
+# Annotation(dataset, group, SubDataset, GeneSet_bykegg,
+#            GeneSet_byswiss=0, 
+#            GeneSet_bycluster=0)
+Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
+           GeneSet_byswiss=0, 
+           GeneSet_bycluster)
+```
+
+### APP2: Panel enrichment analysis
+
+-   Obtain Pathway
+
+-   group_by, summarise: name need to be set based on the samples' name
+
+```{r Cluster Analysis}
+rm(list=ls()) 
+# --- setting parameters ---
+# *dataset
+dataset <- 'ZJ_12samplesEES_metagenomics'
+group = 'NHQ_vs_Control'
+SubDataset <- 'NHQ_vs_Control'
+Cluster = 'Cluster 4' # 410 genes
+
+# *set basic data for p-value and other statistic parameters calculations
+ref_group <- 'Control'
+group_sample <- 'group_NHQ'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+annotation.level <- 'level3_pathway_name'
+# === pvalue and statistic analysis ===
+rawdata <- obtain_pathdata(dataset, group, SubDataset, 
+                            Cluster)
+
+# *setting for visualization app
+fig.name <- paste('HGP of ', group_sample, sep = '')
+  
+# --- obtain expression level by pathway ---
+library(dplyr)
+pathway <- rawdata %>% 
+  group_by(level3_pathway_name) %>%
+  summarise(Control1mean = mean(z1_1), 
+            Control2mean = mean(z1_2),
+            Control3mean = mean(z1_3),
+            NHQ1mean = mean(z10_1), 
+            NHQ2mean = mean(z10_2),
+            NHQ3mean = mean(z10_3)) 
+
+# --- obtain p-value ---
+df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+
+# --- obtain other statistic parameters ---
+df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
+
+# *set threshod for filtering
+p_thre <- 0.275
+FC_up <- 1
+FC_down <- 1
+Expre <- 1
+
+# --- conduct enrichment analysis ---
+fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
+                   p_thre, FC_up, FC_down, Expre,
+                   group_sample.data)
+fig
+
+```

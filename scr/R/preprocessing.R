@@ -60,7 +60,7 @@ obtain_DEGs <- function(rawdata_path, group_path,
     # === Filter Differential expressed genes (DEGs) ===
     # --- threshold 1: padj < 0.05, |log2 fold change| > 1 --- 
     print(paste('The total number of DEGs (not unique):',length(DEGs_raw$id)))
-    print(paste('The total number of unique DEGs (not unique):',length(unique(DEGs_raw$id))))
+    print(paste('The total number of unique DEGs (not unique):', length(unique(DEGs_raw$id))))
     DEGs.filtered <- subset(DEGs_raw,  padj < 0.05 & abs(log2FoldChange) > 1) ## padj
     print(paste('The total number of deseq filtered DEGs:',length(DEGs.filtered$id))) 
     print(paste('The total number of unique deseq filtered DEGs:', length(unique(DEGs.filtered$id)))) 
@@ -100,97 +100,131 @@ obtain_DEGs <- function(rawdata_path, group_path,
 }
 
 ## === TSNE ===
-get_tsne_df <- function(rpkm_path, DEGs.raw, DEGs.filtered.path, 
-                        output_path.graphdata, output_path.dgi,
-                        anno.sub.path, anno.kegg.path){
-  # import data
-  rpkm <- read.table(rpkm_path, sep='\t', header = T,row.names = 1)
-  rpkm$mean <- apply(rpkm, 1, mean)
-  rpkm$id <- rownames(rpkm)
-  # DEGs.raw$id <- rownames(DEGs.raw)
-  print(paste('The total number of DEGs (not unique):',length(DEGs.raw$id)))
-  print(paste('The total number of unique DEGs (not unique):',length(unique(DEGs.raw$id))))
-  print(paste('The number of total genes (unique):',length(unique(rpkm$id))))
-  
-  # merge data
-  DEGs <- DEGs.raw[,-c(1,3,4,6)]
-  loc <- match(DEGs$id, rpkm$id) # return location in rpkm, so that the abundance rpkm can be matched to DEGs
-  rpkm.value <- rpkm[loc,1:(length(rpkm)-1)]
-  df.matched <- cbind(DEGs, rpkm.value)
-  head(df.matched)
-  print(paste('The total number of matched DEGs (not unique):',length(df.matched$id)))
-  print(paste('The total number of unique matched DEGs:',length(unique(df.matched$id))))
+DEGs.filtered <- DEGs.filtered.merged
+get_tsne_df <- function(DEGs.filtered, dataset,
+                        group_path,
+                        anno.signal, anno.tmhmm){
+  # # import data
+  # rpkm <- read.table(rpkm_path, sep='\t', header = T,row.names = 1)
+  # rpkm$mean <- apply(rpkm, 1, mean)
+  # rpkm$id <- rownames(rpkm)
+  # # DEGs.raw$id <- rownames(DEGs.raw)
+  # print(paste('The total number of DEGs (not unique):',length(DEGs.raw$id)))
+  # print(paste('The total number of unique DEGs (not unique):',length(unique(DEGs.raw$id))))
+  # print(paste('The number of total genes (unique):',length(unique(rpkm$id))))
+  # 
+  # # merge data
+  # DEGs <- DEGs.raw[,-c(1,3,4,6)]
+  # loc <- match(DEGs$id, rpkm$id) # return location in rpkm, so that the abundance rpkm can be matched to DEGs
+  # rpkm.value <- rpkm[loc,1:(length(rpkm)-1)]
+  # df.matched <- cbind(DEGs, rpkm.value)
+  # head(df.matched)
+  # print(paste('The total number of matched DEGs (not unique):',length(df.matched$id)))
+  # print(paste('The total number of unique matched DEGs:',length(unique(df.matched$id))))
 
   # === data for tsne ===
   # head(DEGs.filtered) # checking code
-  df <- DEGs.filtered[,-c(1:3)]
+  df <- unique(DEGs.filtered[,-c(2:7, length(DEGs.filtered))])
   head(df) # checking code
-  df.unique <- unique(df[,1:(length(rpkm)-1)])
-  # head(df.unique)
-  print(paste('The total number of unique DEGs for tsne analysis:', length(df.unique$id)))
   
-  if (file.exists(output_path.graphdata)) {
-    print(paste("File", output_path.graphdata, "exists."))
-    graph_data <- read.csv(output_path.graphdata)
-    dgi_data <- read.csv(output_path.dgi)
+  # normalize the expression levels 
+  # normalization
+  df.norm <- log(df[,-(1:2)] + 1, 10)
+  df.norm$id <- df$id
+  df.norm$degs <- df$degs
+  
+  # --- grouping to different datasets ---
+  DEG_group <- as.vector(as.data.frame(table(DEGs.filtered$degs))$Var1)
+  # load conditions information
+  group <- DEG_group[1]
+  mylist <- list()
+  file_path <- paste("./data/", dataset, "/inputdata/graphdata_", group, '.csv', sep = '')
+  if (file.exists(file_path)) {
+    for (i in 1:length(DEG_group)){
+      group <- DEG_group[i]
+      file_path <- paste("./data/", dataset, "/inputdata/graphdata_", group, '.csv', sep = '')
+      graph_data <- read.csv(file_path)
+      mylist[group] <- list(graph_data)
+      print(paste("File", file_path, "exists and successfully load."))
+    }
   } else {
-    # Standardize the data
-    df_tsne <- data.frame(t(apply(df.unique[,2:(length(rpkm)-1)], 1, function(v) {
-      (v - mean(v, na.rm = TRUE)) / sd(v, na.rm = TRUE)
-    })), stringsAsFactors = FALSE)
-    # Replace NA values with 0
-    df_tsne[is.na(df_tsne)] <- 0  
-    
-    # tsne analysis
-    set.seed(0)
-    library(Rtsne)
-    tsne_fpkm = Rtsne(
-      unique(df_tsne),
-      dims = 2,
-      pca = T,
-      max_iter = 1000,
-      theta = 0.4,
-      perplexity = 10,
-      verbose = F
-    )
-    # merge tsne results
-    tsne_result = as.data.frame(tsne_fpkm$Y)
-    colnames(tsne_result) = c("tSNE1","tSNE2")
-    # tsne_result$id <- unique(df.unique[,2:(length(rpkm)-1)])$id # 
-    tsne_result$id<- df.unique$id
-    # head(tsne_result)
-    loc <- match(DEGs.filtered$id, tsne_result$id) # return location in rpkm, so that the abundance rpkm can be matched to DEGs
-    tsne_result.values <- tsne_result[loc,1:2]
-    # head(tsne_result.values)
-    graph_data <- cbind(DEGs.filtered, tsne_result.values)
-    # head(graph_data)
-    # --- Integrate subcellular information ---
-    anno.sub <- read.csv(anno.sub.path)
-    graph_data <- cbind(graph_data, anno.sub[,1:3])
-    anno.kegg <- read.csv(anno.kegg.path)
-    sub <- merge(anno.kegg, anno.sub, by.y = 'id')
-    
-    # create dataset for dgi 
-    dgi_data.tsne <- graph_data[,c('id', 'tSNE1', 'tSNE2')]
-    dgi_data.values <- graph_data[,c(5:(length(rpkm)+2))]
-    # head(dgi_data.values)
-    dgi_data <- unique(cbind(dgi_data.tsne, dgi_data.values))
-    
-    # --- save data ---
-    write.csv(graph_data, output_path.graphdata, row.names = FALSE)
-    write.csv(dgi_data, output_path.dgi, row.names = FALSE)
+    for (i in 1:length(DEG_group)){
+      group <- DEG_group[i]
+      tsne.temp <- subset(df.norm, df.norm$degs == group)
+      tsne.raw <- tsne.temp[,1:(length(tsne.temp)-2)]
+      print(paste('The total number of unique DEGs for tsne analysis of', group, 'dataset is:', length(tsne.temp$id)))
+      
+      condition <- as.vector(
+        as.data.frame(table(conditions$Group[-(1:3)]))$Var1[i]
+      )
+      samples <- subset(conditions, Group == condition | Group == conditions$Group[1])$Samples
+      df_tsne <- tsne.raw[,samples]
+      
+      # --- tsne analysis ---
+      library(Rtsne)
+      set.seed(0)
+      tsne_fpkm = Rtsne(
+        unique(df_tsne),
+        dims = 2,
+        pca = T,
+        max_iter = 1000,
+        theta = 0.4,
+        perplexity = 20,
+        verbose = F
+      )
+      # merge tsne results
+      tsne_result = as.data.frame(tsne_fpkm$Y)
+      colnames(tsne_result) = c("tSNE1","tSNE2")
+      
+      # # --- tsne check ---
+      # ggplot(tsne_result,aes(tSNE1,tSNE2)) +  # ,colour = degs
+      #   geom_point(alpha = 0.5, size = 1) + 
+      #   # geom_point(colour="#85A4FE", size = 1) + 
+      #   labs(title = '') + 
+      #   theme_bw() + 
+      #   scale_colour_manual(values = pale_25) +
+      #   mytheme1
+      
+      # --- construct graph data ---
+      # load SignalP and tmhmm
+      sub.signalp <- read.csv(anno.signal, header = T)
+      sub.tmhmm <- read.csv(anno.tmhmm, header = T)
+      subloca <- merge(sub.signalp[, c('id', 'X.')], sub.tmhmm[, c('id', 'Topology')], by = 'id')
+      ## signalp
+      loc <- which(subloca$X. == 'N') 
+      subloca$Signalp[loc] <- 0
+      loc <- which(subloca$X. != 'N')
+      subloca$Signalp[loc] <- 1
+      table(subloca$Signalp)
+      ## tmhmm
+      loc <- which(subloca$Topology == 'Topology=o') 
+      subloca$tmhmm[loc] <- 0
+      loc <- which(subloca$Topology != 'Topology=o')
+      subloca$tmhmm[loc] <- 1
+      table(subloca$tmhmm)
+      
+      # --- combine to obtain graph data (all info) & dgi data--- 
+      tsne_info <- cbind(tsne_result, df_tsne, tsne.temp[,c('degs', 'id')])
+      graph_data <- merge(tsne_info, subloca, by.y = 'id')
+      head(graph_data)
+      dgi_data <- graph_data[,c((2:(length(df_tsne)+2)), (length(graph_data)-1):length(graph_data))]
+      rownames(dgi_data) <- graph_data$id
+      
+      # --- save data ---
+      graphdata_path <- paste("./data/", dataset, "/inputdata/graphdata_", group, '.csv', sep = '')
+      dgidata_path <- paste("./data/", dataset, "/inputdata/dgidata_", group, '.csv', sep = '')
+      write.csv(graph_data, graphdata_path, row.names = FALSE)
+      write.csv(dgi_data, dgidata_path, row.names = FALSE)
+      
+      # temp variable
+      mylist[group] <- list(graph_data)
+    }
   }
   
-  return(graph_data)
+  return(mylist)
 }
 
-# ========== DEMO 2 ==========
-# umap
-library(umap)
-library(tidyverse)
-library(cowplot)
-library(ggplot2)
-# tsne
+# ========== DEMO ==========
 library(Rtsne)
 library(ggplot2)
 library(RColorBrewer)
@@ -202,7 +236,7 @@ dataset <- 'LY_9samples_metatranscriptomics'
 rawdata_path <- paste("./data/", dataset, "/rawdata/reads_number.txt", sep = '')
 group_path <- paste("./data/", dataset, "/inputdata/group.csv", sep = '')
 output_path <- paste("./data/", dataset, "/inputdata/", sep = '') # input data for modeling in python
-output_path.rawDEGs <- paste(output_path, 'DEGs_raw.csv', sep = '')
+# output_path.rawDEGs <- paste(output_path, 'DEGs_raw.csv', sep = '')
 
 # --- filtered DEGs ---
 rpkm_path <- paste("./data/", dataset, "/rawdata/RPKM.txt", sep = '')
@@ -212,34 +246,28 @@ DEGs.filtered.path <- paste("./data/", dataset, "/inputdata/DEGs_filtered.csv", 
 output_path.dgi <- paste(output_path, 'dgi_tsne.csv', sep = '')
 output_path.graphdata <- paste(output_path, 'graphdata_tsne.csv', sep = '')
 ## annotation
-anno.sub.path <- paste("./data/", dataset, "/inputdata/Annotation_Expre.csv", sep = '')
-anno.kegg.path <- paste("./data/", dataset, "/inputdata/kegg_annotation_all.csv", sep = '')
-## integrate subcellular information 
-sub_path <- paste("./data/", dataset, "/inputdata/subloca.csv", sep = '')
-# ("./02_DatasetAnalysis/output_data/subloca.csv", row.names = 1)
+anno.signal <- paste("./data/", dataset, "/rawdata/Signal.csv", sep = '')
+anno.tmhmm <- paste("./data/", dataset, "/rawdata/tmhmm.csv", sep = '')
 
+# === conduct analysis ===
 # obtain DEGs
-DEGs.filtered.merged <- obtain_DEGs(rawdata_path, group_path, 
+DEGs.filtered <- obtain_DEGs(rawdata_path, group_path, 
                                     rpkm_path,
                                     output_path.rawDEGs, DEGs.filtered.path)
-graph_data <- get_tsne_df(rpkm_path, DEGs.raw, DEGs.filtered.path, output_path.graphdata, output_path.dgi)
+# obtain graph data
+graph_data_list <- get_tsne_df(DEGs.filtered, dataset,
+                               group_path,
+                               anno.signal, anno.tmhmm)
 
-# ========= visualization =========
+
+# ========= visualization toolkits =========
 # --- density plot ---
-ggplot(graph_data, aes(x = tSNE1)) + 
+ggplot(df.norm, aes(x = Blue1)) + 
   geom_density(color = 'black', fill = 'gray')
 
-# ---  raw plot ---
-ggplot(graph_data,aes(umap1,umap2)) + 
-  geom_point(alpha = 0.4, size = 2) + 
-  # geom_point(colour="#85A4FE", size = 1) + 
-  labs(title = '') + 
-  theme_bw() + 
-  scale_colour_manual(values = pale_25) +
-  mytheme1
-
-# --- tsne ---
-ggplot(graph_data,aes(tSNE1,tSNE2,colour = degs)) + 
+# ---  tsne plot ---
+graph_data <- graph_data_list$Blue_vs_Dark
+ggplot(graph_data,aes(tSNE1,tSNE2, colour = as.factor(tmhmm))) +  # ,colour = degs
   geom_point(alpha = 0.5, size = 1) + 
   # geom_point(colour="#85A4FE", size = 1) + 
   labs(title = '') + 
@@ -247,8 +275,7 @@ ggplot(graph_data,aes(tSNE1,tSNE2,colour = degs)) +
   scale_colour_manual(values = pale_25) +
   mytheme1
 
-# ========== APPENDIX ==========
-
+# ========== APPENDIX: Beautify ==========
 library(RColorBrewer)
 library(paletteer) 
 # pallete 
