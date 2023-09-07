@@ -9,6 +9,7 @@
   - Refer to the demo (DEMO1, DEMO2, DEMO3), similarly, change the dataset name, and then conduct DESeq analysis, tsne calculation to obtain filtered differentially expressed genes (DEGs) and graph data list. The datasets in the graph data list are also saved in local folder. 
   - Finally, it returned to a graph data list. Graph data list contains multiple datasets based on the provided datasets. Each has a control group and an experimental group. 
 - Step2:
+  - GenePanelApp.Rmd
   - 
 
 # Draft
@@ -38,7 +39,7 @@
     - GeneExtract: 获取read.csv的file.path —— Cluster+Annotation （无需enrich结果）
     - GenePanelAnalysis: 获取landmark genes
     - GeneNet: 获取基因调控网络的data
-- 
+  - Additional File 2: ko was utilized to represent each gene
 
 
 
@@ -62,3 +63,9 @@
 - Preprocessing: data pretreatment. 
   - Output: DESeq results, Graph data info, DGI raw data for graph learning
   - 
+
+
+
+一带一路的清华力量：青年融入一带一路人文交流
+
+- 

@@ -12,6 +12,10 @@ editor_options:
 
 # Define function & basic setting
 
+```{r}
+rm(list=ls()) 
+```
+
 ### VisualizationSet
 
 ```{r VisualizationSet}
@@ -149,16 +153,16 @@ basic_var <- function(dataset, group, SubDataset){
 ```{r ClusteringPlot}
 Clustering <- function(dataset, group, SubDataset){
   
-  varlist <- basic_var(dataset, group, SubDataset)
+  var_list <- basic_var(dataset, group, SubDataset)
   # # --- define path ---
-  # label_path <- varlist[[1]]
-  # output_path <- varlist[[2]]
-  # graphdata.path <- varlist[[3]]
-  # fig.path <- varlist[[4]]
+  # label_path <- var_list[[1]]
+  # output_path <- var_list[[2]]
+  # graphdata.path <- var_list[[3]]
+  # fig.path <- var_list[[4]]
     
   # --- load data ---
-  graphdata <- varlist[[7]]
-  labels <- varlist[[8]]
+  graphdata <- var_list[[7]]
+  labels <- var_list[[8]]
   
   # --- visualization ---
   library(tidyverse)
@@ -193,6 +197,8 @@ Clustering <- function(dataset, group, SubDataset){
 
 ### Annotation(): Extract Panels with interested annotation info
 
+-   Problem/Flaw: genes that lack of annotation would be ignored
+
 ```{r ExtractPanels}
 
 Annotation <- function(dataset, group, SubDataset, 
@@ -204,7 +210,7 @@ Annotation <- function(dataset, group, SubDataset,
   "
   # load data
   var_list <- basic_var(dataset, group, SubDataset)
-  matched_kegg <- varlist[[length(varlist)]]
+  matched_kegg <- var_list[[length(var_list)]]
   
   # extract and save gene set
   if (GeneSet_bycluster[[1]] != 0){
@@ -228,7 +234,7 @@ Annotation <- function(dataset, group, SubDataset,
           result <- rbind(result, result.temp)
         }
       }
-      print(paste('The total gene number of', GeneSet_byswiss[[i]], 'is:', length(unique(result$id))) ) # 26 genes in total 
+      print(paste('The total gene number of', GeneSet_byswiss[[i]], 'is:', length(unique(result$id))) ) 
       output_path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', GeneSet_byswiss[[i]][j], '.csv', sep = '') 
       write.csv(result, output_path, row.names = FALSE)
     }
@@ -282,7 +288,8 @@ obtain_pathdata <- function(dataset, group, SubDataset,
 
 ### obtain_pvalue()
 
-```{r}
+```{r obtain_pvalue}
+
 obtain_pvalue <- function(dataset, ref_group, group_sample.data, pathway, annotation.level){
 
   # prepare data
@@ -353,7 +360,7 @@ ObtainStatistic <- function(pathway, df.pathlevel_p, group_sample.data){
 
 ```
 
-###  last_chara: for data processing
+### last_chara(): for data processing
 
 ```{r last_chara}
 last_chara <- function(string, chara=';'){
@@ -480,9 +487,175 @@ GPsEnrichCompare <- function(dataset, group, SubDataset, k=7){
 }
 ```
 
+### ObtainCorNet()
+
+```{r ObtainCorNet()}
+ObtainCorNet <- function(dataset, SubDataset, Cluster, group, group_sample.data, 
+                         gene_name=TRUE, thre.p = 0.05, thre.r = 0.8){
+  # obtain filtered pathway
+  Filteredcluster.path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '_Enrichment.csv', sep = '') 
+  Filteredcluster <- read.csv(Filteredcluster.path)
+  
+  # obtain pathway list & matching & obtain gene list
+  rawdata <- obtain_pathdata(dataset, group, SubDataset, Cluster)
+  
+  # obtain ko descrption as labels
+  kegg_anno.path <- paste("./data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '') 
+  kegg_anno <- read.csv(kegg_anno.path)
+  path_list <- Filteredcluster$level3_pathway_name
+  
+  # initial
+  path <- path_list[1]
+  # for loop 
+  gene_list <- rawdata[grepl(path, rawdata$level3_pathway_name), ] 
+  for (path in path_list[2:length(path_list)]){
+    list <- rawdata[grepl(path, rawdata$level3_pathway_name), ]
+    gene_list <- rbind(gene_list, list)
+  }
+  
+  Col.name <- c('id', 
+                group_sample.data$Samples, 
+                # "SignalP", "tmhmm" , 
+                "SwissProt_ID", "SwissProt_Description",
+                  "level1_pathway_id", "level1_pathway_name", "level2_pathway_id", "level2_pathway_name", "level3_pathway_id", "level3_pathway_name",
+                  'ko', 'ko_name', 'ko_des', 'level3_pathway_name')
+  CorCol.name <- c('id', group_sample.data$Samples, 'ko_name')
+  Hub_group_raw <- unique(gene_list[Col.name])
+  Hub_group <- unique(Hub_group_raw[CorCol.name])
+  merge_data <- unique(Hub_group)
+  
+  if (gene_name == TRUE) {
+    # v1: merge gene_id and gene description
+    gene_names <- data.frame(paste(merge_data$ko_name, ' (', merge_data$id, ')', sep = ''))
+    colnames(gene_names) <- 'label'
+    corr_data <- cbind(gene_names, merge_data[,2:(length(merge_data)-1)])
+    rownames(corr_data) <- corr_data$label
+    data <- t(corr_data[, -1])
+  } else {
+    # v2: only gene id
+    corr_data <- merge_data
+    rownames(corr_data) <- corr_data$id
+    data <- t(corr_data[, -c(1, length(corr_data))])
+  }
+  
+  # calculate correlation matrix
+  library(psych)
+  occor = corr.test(data,use="pairwise",method="spearman",adjust="fdr",alpha=0.05)
+  occor.r = occor$r # 取相关性矩阵R值
+  occor.p = occor$p # 取相关性矩阵p值
+  occor.r[occor.p>thre.p | abs(occor.r) < thre.r ] = 0
+  occor.path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '_p', thre.p , '_r', thre.r, '_CorNet.csv', sep = '')
+  if (file.exists(occor.path)) {
+    print(paste('File', occor.path, 'exists.'))
+  } else {
+    write.csv(occor.r, occor.path)
+  }
+
+  return(occor.r)
+}
+
+```
+
+### ObtainGraph()
+
+```{r ObtainGraph}
+ObtainGraph <- function(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8){
+  
+  # === nodes ===
+  E(igraph)$corr <- E(igraph)$weight
+  E(igraph)$weight <- abs(E(igraph)$weight)
+  
+  # nodes number check
+  print(paste('The total nodes number is:',length(V(igraph)$name))) #或 vcount(igraph)
+  
+  #节点度（Degree）
+  V(igraph)$degree <- degree(igraph)
+  # V(igraph)$degree
+  
+  # --- Visualization: Degree distribution ---
+  if (ExploreDegree == TRUE){
+    degree_dist <- degree.distribution(igraph)[-1]
+    degree_num <- 1:max(V(igraph)$degree)
+    par(mfrow = c(1, 2))
+    hist(V(igraph)$degree, xlab = 'Degree', ylab = 'Frequency',
+    main = 'Degree distribution')
+    plot(degree_num, degree_dist, log = 'xy', 
+         xlab = 'Log-degree',
+         ylab = 'Log-intensity', 
+         main = 'Log-log degree distribution')
+  }
+  
+  # --- Exploratory Analysis: Relationship between node degrees and the average degree of its "neighbors" --- 
+  if (ExploreNeibor == TRUE){
+    neighbor_degree <- graph.knn(igraph, V(igraph))$knn
+    plot(V(igraph)$degree, neighbor_degree, log = 'xy',
+       xlab = 'Log degree', ylab = 'Log average neighbor degree')
+  }
+  
+  #加权度（Weighted degree）
+  V(igraph)$weight_degree <- strength(igraph)
+  # V(igraph)$weight_degree
+  #接近中心性（Closeness centrality）
+  V(igraph)$closeness_centrality <- closeness(igraph)
+  # V(igraph)$closeness_centrality
+  #介数中心性（Betweenness centrality）
+  V(igraph)$betweenness_centrality <- betweenness(igraph)
+  # V(igraph)$betweenness_centrality
+  #特征向量中心性（Eigenvector centrality）
+  V(igraph)$eigenvector_centrality <- evcent(igraph)$vector
+  # V(igraph)$eigenvector_centrality
+  
+  # --- Exploratory Analysis: The relationship between three features describing node centrality ---
+  if (ExploreNeibor == TRUE){
+    library(car)
+    scatter3d(V(igraph)$closeness_centrality, V(igraph)$betweenness_centrality, V(igraph)$eigenvector_centrality, xlab = 'Closeness centrality', ylab = 'Betweenness centrality', zlab = 'Eigenvector centrality', surface = FALSE)
+    # Relationship between node degree and node centrality, e.g. the relationship with feature vector centrality
+    plot(V(igraph)$degree, V(igraph)$eigenvector_centrality,
+    xlab = 'Degree', ylab = 'Eigenvector centrality')
+  }
+  
+  # obtainn node list
+  node_list <- data.frame(node_id = V(igraph)$name,
+                          degree = V(igraph)$degree,
+                          weight_degree = V(igraph)$weight_degree,
+                          closeness_centrality = V(igraph)$closeness_centrality,
+                          betweenness_centrality = V(igraph)$betweenness_centrality,
+                          eigenvector_centrality = V(igraph)$eigenvector_centrality)
+  
+  
+  # save node
+  node.path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '_p', thre.p , '_r', thre.r, '_Node.csv', sep = '')
+  write.table(node_list, node.path, sep = 't', row.names = FALSE, quote = FALSE)
+  
+  # === Edges ===
+  #权重（Weighted）
+  E(igraph)$weight
+  #边介数中心性（Edge betweenness centrality）
+  E(igraph)$betweenness_centrality <- edge.betweenness(igraph)
+  E(igraph)$betweenness_centrality
+  
+  # obtain edge list
+  edge <- data.frame(as_edgelist(igraph)) #igraph 
+  edge_list <- data.frame(
+  source = edge[[1]],
+  target = edge[[2]],
+  weight = E(igraph)$weight,
+  correlation = E(igraph)$corr,
+  betweenness_centrality = E(igraph)$betweenness_centrality
+  )
+  
+  # save edge
+  edge.path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '_p', thre.p , '_r', thre.r, '_Edges.csv', sep = '')
+  write.table(edge_list, edge.path, sep = 't', row.names = FALSE, quote = FALSE)
+  
+  graph_list <- list(node_list, edge_list)
+  return(graph_list)
+}
+```
+
 # DEMO1: Yellow light induced optogenetic denitrifier
 
-## APP 1: 2D-Visualization of gene panels (cluster)
+## APP1: 2D-Visualization of gene panels (cluster)
 
 ```{r}
 # setting parameters
@@ -490,7 +663,7 @@ dataset = 'LY_9samples_metatranscriptomics'
 group = 'Yellow_vs_Dark'
 SubDataset <- 'YvsD_SubCell_dgi'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 p <- Clustering(dataset, group, SubDataset)
 p
 ```
@@ -504,15 +677,15 @@ dataset = 'LY_9samples_metatranscriptomics'
 group = 'Yellow_vs_Dark'
 SubDataset <- 'YvsD_SubCell_dgi'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 
 GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
 GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
 GeneSet_bykegg <- list(c('Phototransduction'))
 
-Annotation(dataset, group, SubDataset, GeneSet_bykegg,
-           GeneSet_byswiss=0, 
-           GeneSet_bycluster=0)
+# Annotation(dataset, group, SubDataset, GeneSet_bykegg,
+#            GeneSet_byswiss=0, 
+#            GeneSet_bycluster=0)
 Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
            GeneSet_byswiss=0, 
            GeneSet_bycluster)
@@ -541,7 +714,7 @@ rawdata <- obtain_pathdata(dataset, group, SubDataset,
                             Cluster)
 
 # *setting for visualization app
-fig.name <- paste('HGP of ', group_sample, sep = '')
+fig.name <- paste(Cluster, ' of ', group_sample, sep = '')
   
 # --- obtain expression level by pathway ---
 library(dplyr)
@@ -582,6 +755,9 @@ analysis with proper threshold.
 
 -   In default, all the clusters are compared.
 
+-   In this case, it can be observed clearly that cluster 3 is the hub
+    gene panel with high expression level.
+
 ```{r GPsEnrichComparison}
 # setting parameters
 dataset = 'LY_9samples_metatranscriptomics'
@@ -594,18 +770,290 @@ p
 
 ## APP4: Topology Network with landmark genes regulatory strategy
 
+-   Obtain topological properties
+
 From app3, we can identify the Hub Gene Panels (HGPs) and Signaling Gene
 Panels (HGPs).
-
--   HGP
-
--   SGP
 
 To better regulate the microbiome, we construct regulatory network, also
 called interaction network, on the genes level based on microbial
 genetic topology.
 
-# DEMO2: Yellow light induced denitrifier based on metagenomics
+-   ObtainGP(): Including HGP, SGP, for further process [to be done]
+
+```{r dataloader}
+# setting parameters
+dataset <- 'LY_9samples_metatranscriptomics'
+group <- 'Yellow_vs_Dark'
+SubDataset <- 'YvsD_SubCell_dgi'
+# *set basic data for statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Yellow'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+Cluster <- 'Cluster 3' # HGP
+
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+  
+library(igraph)
+# parameter setting*
+ExploreDegree = FALSE
+ExploreNeibor = FALSE
+adjacency_weight <- occor.r
+igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
+
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+```
+
+### Visualization(TO DO)
+
+```{r}
+
+# 加载包 
+# 设置不同type的边颜色不同 
+E(igraph)$color <- "red" 
+index <- E(igraph)$type == "mention"
+E(igraph)$color <- 'green'
+
+plot(igraph, 
+     vertex.color = 'gray', edge.color = E(igraph)$color,
+     layout = layout_in_circle)
+
+cfg <- cluster_fast_greedy(igraph)
+plot(cfg, igraph)
+```
+
+### Landmark genes
+
+```{r}
+
+
+node_list <- graph_list[[1]]
+edge_list <- graph_list[[2]]
+
+
+# 也可能与nodes、list无关，只要是expression top3即可？
+
+
+```
+
+# DEMO2: Blue light induced optogenetic denitrifier
+
+## APP1: 2D-Visualization of gene panels (cluster)
+
+```{r}
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'BvsD_SubCell_dgi'
+
+var_list <- basic_var(dataset, group, SubDataset)
+p <- Clustering(dataset, group, SubDataset)
+p
+```
+
+```{r DataLoader}
+# --- load functional genes ---
+library(dplyr)
+
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'BvsD_SubCell_dgi'
+
+var_list <- basic_var(dataset, group, SubDataset)
+
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
+GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
+GeneSet_bykegg <- list(c('Phototransduction'))
+
+# Annotation(dataset, group, SubDataset, GeneSet_bykegg,
+#            GeneSet_byswiss=0, 
+#            GeneSet_bycluster=0)
+Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
+           GeneSet_byswiss=0, 
+           GeneSet_bycluster) 
+# The output are all unique genes
+```
+
+Cluster 1 Cluster 2 Cluster 3 Cluster 4 Cluster 5 Cluster 6 Cluster 7
+4828 1795 9533 1273 4198 2061 1589
+
+## APP2: Panel enrichment analysis
+
+```{r Cluster Analysis}
+# rm(list=ls()) 
+# --- setting parameters ---
+# *dataset
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'BvsD_SubCell_dgi'
+Cluster = 'Cluster 7' 
+
+# *set basic data for p-value and other statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Blue'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+annotation.level <- 'level3_pathway_name'
+# === pvalue and statistic analysis ===
+rawdata <- obtain_pathdata(dataset, group, SubDataset, 
+                            Cluster)
+
+# *setting for visualization app
+fig.name <- paste(Cluster, ' of ', group_sample, sep = '')
+  
+# --- obtain expression level by pathway ---
+library(dplyr)
+pathway <- rawdata %>% 
+  group_by(level3_pathway_name) %>%
+  summarise(Dark1mean = mean(Dark1), 
+            Dark2mean = mean(Dark2),
+            Dark3mean = mean(Dark3),
+            Blue1mean = mean(Blue1), 
+            Blue2mean = mean(Blue2),
+            Blue3mean = mean(Blue3)) 
+
+# --- obtain p-value ---
+df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+
+# --- obtain other statistic parameters ---
+df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
+
+# *set threshod for filtering
+if (Cluster == 'Cluster 4'){
+  p_thre <- 0.05
+  FC_up <- 2
+  FC_down <- 0.2
+  Expre <- 20
+} else if (Cluster == 'Cluster 5'){
+  p_thre <- 0.001 
+  FC_up <- 10
+  FC_down <- 0.5
+  Expre <- 10
+} else if (Cluster == 'Cluster 7'){
+  p_thre <- 0.01
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 10
+} else if (Cluster == 'Cluster 2'){
+  p_thre <- 0.001
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 10
+} else if (Cluster == 'Cluster 3'){
+  p_thre <- 0.01
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 5.5
+} else if (Cluster == 'Cluster 1'){
+  p_thre <- 0.01
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 1.5
+} else if (Cluster == 'Cluster 6'){
+  p_thre <- 0.01
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 10
+}
+
+
+# --- conduct enrichment analysis ---
+fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
+                   p_thre, FC_up, FC_down, Expre,
+                   group_sample.data)
+fig
+
+```
+
+## APP3: Interested functions & genes analysis among gene panels
+
+To conduct gene panels comparison, enrichment analysis of targeted panel
+is a prerequisite. Please make sure to have used APP2 for enrichment
+analysis with proper threshold.
+
+-   In default, all the clusters are compared.
+
+-   In this case, it can be observed clearly that cluster 3 is the hub
+    gene panel with high expression level.
+
+```{r GPsEnrichComparison}
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'BvsD_SubCell_dgi'
+
+p <- GPsEnrichCompare(dataset, group, SubDataset, k=7) 
+p
+```
+
+## APP4: Topology Network with landmark genes regulatory strategy
+
+-   Obtain topological properties
+
+From app3, we can identify the Hub Gene Panels (HGPs) and Signaling Gene
+Panels (HGPs).
+
+To better regulate the microbiome, we construct regulatory network, also
+called interaction network, on the genes level based on microbial
+genetic topology.
+
+-   ObtainGP(): Including HGP, SGP, for further process [to be done]
+
+```{r dataloader}
+# setting parameters
+dataset = 'LY_9samples_metatranscriptomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'BvsD_SubCell_dgi'
+# *set basic data for statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Blue'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+Cluster <- 'Cluster 4' # HGP
+
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+  
+library(igraph)
+# parameter setting*
+ExploreDegree = FALSE
+ExploreNeibor = FALSE
+adjacency_weight <- occor.r
+igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
+
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+```
+
+### Visualization & obtain landmark genes (TO DO)
+
+-   Visualization & obtain landmark genes (TO DO)
+
+```{r}
+
+# 设置不同type的边颜色不同 
+pale8 <- c("#8DD3C7FF","#FFFFB3FF","#BEBADAFF","#FB8072FF","#80B1D3FF","#FDB462FF","#B3DE69FF","#FCCDE5FF")
+E(igraph)$color <- "#FB8072FF" 
+index <- E(igraph)$type == "mention"
+E(igraph)$color <- '#8DD3C7FF'
+
+plot(igraph, 
+     vertex.color = '#BEBADAFF', edge.color = E(igraph)$color,
+     layout = layout_in_circle)
+
+cfg <- cluster_fast_greedy(igraph)
+plot(cfg, igraph)
+
+
+# landmark genes: merge nodes list with expression level 
+node_list <- graph_list[[1]]
+edge_list <- graph_list[[2]]
+
+
+# 也可能与nodes、list无关，只要是expression top3即可？
+```
+
+# DEMO3: Yellow light induced denitrifier based on metagenomics
 
 ### Graph Learning Results
 
@@ -644,7 +1092,7 @@ dataset = 'LY_15samples_metagenomics'
 group = 'Yellow_vs_Dark'
 SubDataset <- 'Yellow_vs_Dark'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 p <- Clustering(dataset, group, SubDataset)
 p
 ```
@@ -669,7 +1117,7 @@ dataset = 'LY_15samples_metagenomics'
 group = 'Yellow_vs_Dark'
 SubDataset <- 'Yellow_vs_Dark'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 
 GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
 # GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
@@ -767,7 +1215,7 @@ dataset = 'LY_15samples_metagenomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'Blue_vs_Dark'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 p <- Clustering(dataset, group, SubDataset)
 p
 ```
@@ -788,7 +1236,7 @@ dataset = 'LY_15samples_metagenomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'Blue_vs_Dark'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 
 GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
 # GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
@@ -804,7 +1252,7 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 ### APP2: Panel enrichment analysis
 
--   'group_blue.csv ' need to be manually created
+-   'group_blue.csv' need to be manually created
 
 ```{r Cluster Analysis}
 # rm(list=ls()) 
@@ -891,7 +1339,7 @@ dataset = 'ZJ_12samplesEES_metagenomics'
 group = 'NHQ_vs_Control'
 SubDataset <- 'NHQ_vs_Control'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 p <- Clustering(dataset, group, SubDataset)
 p
 ```
@@ -914,7 +1362,7 @@ dataset = 'ZJ_12samplesEES_metagenomics'
 group = 'NHQ_vs_Control'
 SubDataset <- 'NHQ_vs_Control'
 
-varlist <- basic_var(dataset, group, SubDataset)
+var_list <- basic_var(dataset, group, SubDataset)
 
 GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
 # GeneSet_byswiss <- list(c('nitrate', 'nitrite'))

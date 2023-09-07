@@ -10,6 +10,7 @@ output:
 # Define function
 
 #### obtain_DEGs
+
 ```{r obtain_DEGs}
 # ========== define function ==========
 ## === DEGs ===
@@ -347,72 +348,10 @@ ggplot(graph_data,aes(tSNE1,tSNE2, colour = as.factor(tmhmm))) +  # ,colour = de
 
 # DEMO2: Optogenetic denitrifier based on metagenomics
 
+-   output: [1] "The total number of DEGs (not unique): 788036" [1] "The total number of unique DEGs (not unique): 197009" [1] "The total number of deseq filtered DEGs: 15157" [1] "The total number of unique deseq filtered DEGs: 12021" [1] "The number of total genes (unique): 198113"
 
-# DEMO3: optogenetic exogenous electron shuttles (EES) enhanced 
-- output:
-[1] "The total number of DEGs (not unique): 2190136"
-[1] "The total number of unique DEGs (not unique): 1002081"
-[1] "The total number of deseq filtered DEGs: 46591"
-[1] "The total number of unique deseq filtered DEGs: 40287"
-[1] "The number of total genes (unique): 1048575"
-[1] "The number of total DEGs after filtering : 7796"
- MV_vs_Control NHQ_vs_Control  NR_vs_Control 
-          5734            964           1098 
-          
-[1] "The total number of unique DEGs for tsne analysis of MV_vs_Control dataset is: 5734"
+[1] "The total number of unique DEGs for tsne analysis of Blue_vs_Dark dataset is: 88" [1] "The total number of unique DEGs for tsne analysis of Green_vs_Dark dataset is: 135" [1] "The total number of unique DEGs for tsne analysis of Red_vs_Dark dataset is: 642" [1] "The total number of unique DEGs for tsne analysis of Yellow_vs_Dark dataset is: 57"
 
-[1] "The total number of unique DEGs for tsne analysis of MV_vs_Control dataset is: 5734"
-[1] "The total number of unique DEGs for tsne analysis of NHQ_vs_Control dataset is: 964"
-[1] "The total number of unique DEGs for tsne analysis of NR_vs_Control dataset is: 1098"
-```{r}
-library(Rtsne)
-library(ggplot2)
-library(RColorBrewer)
-library(paletteer)
-
-# ===== import data path =====
-# === dataset setting* ===
-dataset <- 'ZJ_12samplesEES_metagenomics'
-
-# === path ===
-rawdata_path <- paste("./data/", dataset, "/rawdata/reads_number.txt", sep = '')
-group_path <- paste("./data/", dataset, "/inputdata/group.csv", sep = '')
-output_path <- paste("./data/", dataset, "/inputdata/", sep = '') # input data for modeling in python
-output_path.rawDEGs <- paste(output_path, 'DEGs_raw.csv', sep = '')
-# path for filtered DEGs
-rpkm_path <- paste("./data/", dataset, "/rawdata/RPKM.txt", sep = '')
-DEGs.filtered.path <- paste("./data/", dataset, "/inputdata/DEGs_filtered.csv", sep = '')
-
-# --- tsne & graph data & dgi---
-output_path.dgi <- paste(output_path, 'dgi_tsne.csv', sep = '')
-output_path.graphdata <- paste(output_path, 'graphdata_tsne.csv', sep = '')
-# ## annotation
-# anno.signal <- paste("./data/", dataset, "/rawdata/Signal.csv", sep = '')
-# anno.tmhmm <- paste("./data/", dataset, "/rawdata/tmhmm.csv", sep = '')
-
-# === conduct analysis ===
-# obtain DEGs
-DEGs.filtered <- obtain_DEGs(rawdata_path, group_path, 
-                                    rpkm_path, thre = 1, 
-                                    output_path.rawDEGs, DEGs.filtered.path)
-# obtain graph data
-graph_data_list <- get_tsne_df(DEGs.filtered, dataset,
-                               group_path, perplex = 10)
-
-```
-# DEMO4: Optogenetic Anammox
-
-- output:
-[1] "The total number of DEGs (not unique): 788036"
-[1] "The total number of unique DEGs (not unique): 197009"
-[1] "The total number of deseq filtered DEGs: 15157"
-[1] "The total number of unique deseq filtered DEGs: 12021"
-[1] "The number of total genes (unique): 198113"
-
-[1] "The total number of unique DEGs for tsne analysis of Blue_vs_Dark dataset is: 88"
-[1] "The total number of unique DEGs for tsne analysis of Green_vs_Dark dataset is: 135"
-[1] "The total number of unique DEGs for tsne analysis of Red_vs_Dark dataset is: 642"
-[1] "The total number of unique DEGs for tsne analysis of Yellow_vs_Dark dataset is: 57"
 ```{r}
 library(Rtsne)
 library(ggplot2)
@@ -449,3 +388,47 @@ graph_data_list <- get_tsne_df(DEGs.filtered, dataset,
                                group_path, perplex = 10)
 ```
 
+# DEMO3: optogenetic exogenous electron shuttles (EES) enhanced
+
+-   output: [1] "The total number of DEGs (not unique): 2190136" [1] "The total number of unique DEGs (not unique): 1002081" [1] "The total number of deseq filtered DEGs: 46591" [1] "The total number of unique deseq filtered DEGs: 40287" [1] "The number of total genes (unique): 1048575" [1] "The number of total DEGs after filtering : 7796" MV_vs_Control NHQ_vs_Control NR_vs_Control 5734 964 1098
+
+[1] "The total number of unique DEGs for tsne analysis of MV_vs_Control dataset is: 5734"
+
+[1] "The total number of unique DEGs for tsne analysis of MV_vs_Control dataset is: 5734" [1] "The total number of unique DEGs for tsne analysis of NHQ_vs_Control dataset is: 964" [1] "The total number of unique DEGs for tsne analysis of NR_vs_Control dataset is: 1098"
+
+```{r}
+library(Rtsne)
+library(ggplot2)
+library(RColorBrewer)
+library(paletteer)
+
+# ===== import data path =====
+# === dataset setting* ===
+dataset <- 'ZJ_12samplesEES_metagenomics'
+
+# === path ===
+rawdata_path <- paste("./data/", dataset, "/rawdata/reads_number.txt", sep = '')
+group_path <- paste("./data/", dataset, "/inputdata/group.csv", sep = '')
+output_path <- paste("./data/", dataset, "/inputdata/", sep = '') # input data for modeling in python
+output_path.rawDEGs <- paste(output_path, 'DEGs_raw.csv', sep = '')
+# path for filtered DEGs
+rpkm_path <- paste("./data/", dataset, "/rawdata/RPKM.txt", sep = '')
+DEGs.filtered.path <- paste("./data/", dataset, "/inputdata/DEGs_filtered.csv", sep = '')
+
+# --- tsne & graph data & dgi---
+output_path.dgi <- paste(output_path, 'dgi_tsne.csv', sep = '')
+output_path.graphdata <- paste(output_path, 'graphdata_tsne.csv', sep = '')
+# ## annotation
+# anno.signal <- paste("./data/", dataset, "/rawdata/Signal.csv", sep = '')
+# anno.tmhmm <- paste("./data/", dataset, "/rawdata/tmhmm.csv", sep = '')
+
+# === conduct analysis ===
+# obtain DEGs
+DEGs.filtered <- obtain_DEGs(rawdata_path, group_path, 
+                                    rpkm_path, thre = 1, 
+                                    output_path.rawDEGs, DEGs.filtered.path)
+# obtain graph data
+graph_data_list <- get_tsne_df(DEGs.filtered, dataset,
+                               group_path, perplex = 10)
+
+```
