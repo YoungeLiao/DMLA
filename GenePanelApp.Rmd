@@ -487,6 +487,49 @@ GPsEnrichCompare <- function(dataset, group, SubDataset, k=7){
 }
 ```
 
+### Search_GePa()
+
+```{r}
+Search_GePa <- function(var_list, SearchGene=TRUE, SearchPathway=FALSE){
+  matched_kegg <- var_list[[length(var_list)]]
+
+  if (SearchGene == TRUE){
+    annotation <- 'ko_des'
+    # grep gene info list
+    kodes <- matched_kegg[grepl(interested.gene, matched_kegg[annotation][,1]), ] 
+    
+    # extract cluster 
+    gene.clu.distri <- table(kodes$Cluster)
+    print(paste('Most of', interested.gene, 'related gene belong to:'))
+    print(gene.clu.distri[grepl(max(gene.clu.distri), gene.clu.distri)])
+    print(paste('The cluster distribution of', interested.gene, 'is:'))
+    print(gene.clu.distri)
+    
+    # obtain cluster 
+    temp <- as.data.frame(gene.clu.distri[grepl(max(gene.clu.distri), gene.clu.distri)])
+    Cluster <- rownames(temp)
+    # print(paste('Gene', interested.gene, 'belongs to', Cluster))
+  } else if (SearchPathway == TRUE){
+    annotation <- 'level3_pathway_name'
+    # grep gene info list
+    level3_path <- matched_kegg[grepl(interested.pathway, matched_kegg[annotation][,1]), ] 
+    
+    # extract cluster 
+    path.clu.distri <- table(level3_path$Cluster)
+    print(paste('Most of ', interested.gene, 'related gene belong to:'))
+    print(path.clu.distri[grepl(max(path.clu.distri), path.clu.distri)])
+    print(paste('The cluster distribution of', interested.pathway, 'is:'))
+    print(path.clu.distri)
+    
+    # obtain cluster 
+    temp <- as.data.frame(gene.clu.distri[grepl(max(gene.clu.distri), gene.clu.distri)])
+    Cluster <- rownames(temp)
+  }
+
+  return(Cluster)
+}
+```
+
 ### ObtainCorNet()
 
 ```{r ObtainCorNet()}
@@ -653,6 +696,30 @@ ObtainGraph <- function(dataset, SubDataset, Cluster, group, group_sample.data, 
 }
 ```
 
+### Obtain_landmark()
+
+```{r}
+obtain_landmark <- function(graph_list, dataset, group, SubDataset, 
+                            Cluster, group_sample.data){
+  # landmark genes: merge nodes list with expression level 
+  node_list <- graph_list[[1]]
+  edge_list <- graph_list[[2]]
+  node_list$id <- node_list$node_id
+  # var_list <- basic_var(dataset, group, SubDataset)
+  # matched_kegg <- var_list[[length(var_list)]]
+  
+  rawdata <- obtain_pathdata(dataset, group, SubDataset, Cluster)
+  
+  CorCol.name <- c('id', group_sample.data$Samples, 'ko_name', 'ko_des')
+  landmark_info <- unique(rawdata[CorCol.name])
+  landmark <- merge(node_list, landmark_info, by = 'id')
+  
+  landmark$Mean <- apply(landmark[group_sample.data$Samples], 1, mean)
+  landmark.ordered <- landmark[order(landmark$Mean, decreasing = TRUE),]
+  return(landmark.ordered)
+}
+```
+
 # DEMO1: Yellow light induced optogenetic denitrifier
 
 ## APP1: 2D-Visualization of gene panels (cluster)
@@ -744,7 +811,6 @@ fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
                    p_thre, FC_up, FC_down, Expre,
                    group_sample.data)
 fig
-
 ```
 
 ## APP3: Interested functions & genes analysis among gene panels
@@ -770,7 +836,7 @@ p
 
 ## APP4: Topology Network with landmark genes regulatory strategy
 
--   Obtain topological properties
+-   Obtain topological properties & landmark genes
 
 From app3, we can identify the Hub Gene Panels (HGPs) and Signaling Gene
 Panels (HGPs).
@@ -779,7 +845,8 @@ To better regulate the microbiome, we construct regulatory network, also
 called interaction network, on the genes level based on microbial
 genetic topology.
 
--   ObtainGP(): Including HGP, SGP, for further process [to be done]
+The occor.r and graph_list can also be utilized for visualization in
+Gephi or R.
 
 ```{r dataloader}
 # setting parameters
@@ -791,8 +858,22 @@ ref_group <- 'Dark'
 group_sample <- 'group_Yellow'
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
-Cluster <- 'Cluster 3' # HGP
 
+# --- gene panel setting ---
+# *setting for gene searching: Obtain the targeted genes and corresponding gene panel
+# method 1: manually set interested gene panel (cluster)
+Cluster <- 'Cluster 3' # HGP
+# method 2: search the gene panel that interested gene or pathway assigned to 
+interested.gene <- 'nitrite'
+interested.pathway <- 'Phototransduction'
+SearchGene <- TRUE
+SearchPathway <- FALSE
+'
+option: level3_pathway_name, ko_des, SwissProt_Description
+'
+Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+
+# === obtain correlation matrix: occor.r ===
 occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
   
 library(igraph)
@@ -802,39 +883,35 @@ ExploreNeibor = FALSE
 adjacency_weight <- occor.r
 igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
 
+# === obtain graph: graph_list ===
 graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+
+# --- obtain landmark genes ----
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset, 
+                            Cluster, group_sample.data)
+
+landmark.top5 <- landmark.ordered$ko_name[1:5]
+
+print(paste('The top 5 landmark genes of', Cluster, 'is:'))
+print(landmark.top5)
 ```
 
-### Visualization(TO DO)
+-   Visualization
 
 ```{r}
 
-# 加载包 
 # 设置不同type的边颜色不同 
-E(igraph)$color <- "red" 
+pale8 <- c("#8DD3C7FF","#FFFFB3FF","#BEBADAFF","#FB8072FF","#80B1D3FF","#FDB462FF","#B3DE69FF","#FCCDE5FF")
+E(igraph)$color <- "#FB8072FF" 
 index <- E(igraph)$type == "mention"
-E(igraph)$color <- 'green'
+E(igraph)$color <- '#8DD3C7FF'
 
 plot(igraph, 
-     vertex.color = 'gray', edge.color = E(igraph)$color,
+     vertex.color = '#BEBADAFF', edge.color = E(igraph)$color,
      layout = layout_in_circle)
 
 cfg <- cluster_fast_greedy(igraph)
 plot(cfg, igraph)
-```
-
-### Landmark genes
-
-```{r}
-
-
-node_list <- graph_list[[1]]
-edge_list <- graph_list[[2]]
-
-
-# 也可能与nodes、list无关，只要是expression top3即可？
-
-
 ```
 
 # DEMO2: Blue light induced optogenetic denitrifier
@@ -990,17 +1067,6 @@ p
 
 ## APP4: Topology Network with landmark genes regulatory strategy
 
--   Obtain topological properties
-
-From app3, we can identify the Hub Gene Panels (HGPs) and Signaling Gene
-Panels (HGPs).
-
-To better regulate the microbiome, we construct regulatory network, also
-called interaction network, on the genes level based on microbial
-genetic topology.
-
--   ObtainGP(): Including HGP, SGP, for further process [to be done]
-
 ```{r dataloader}
 # setting parameters
 dataset = 'LY_9samples_metatranscriptomics'
@@ -1011,10 +1077,24 @@ ref_group <- 'Dark'
 group_sample <- 'group_Blue'
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
-Cluster <- 'Cluster 4' # HGP
 
-occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
-  
+# --- gene panel setting ---
+# *setting for gene searching: Obtain the targeted genes and corresponding gene panel
+# method 1: manually set interested gene panel (cluster)
+Cluster <- 'Cluster 3' # HGP
+# method 2: search the gene panel that interested gene or pathway assigned to 
+interested.gene <- 'nitrite'
+interested.pathway <- 'Phototransduction'
+SearchGene <- TRUE
+SearchPathway <- FALSE
+'
+option: level3_pathway_name, ko_des, SwissProt_Description
+'
+Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+
+# === obtain correlation matrix: occor.r ===
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8)
+
 library(igraph)
 # parameter setting*
 ExploreDegree = FALSE
@@ -1022,12 +1102,20 @@ ExploreNeibor = FALSE
 adjacency_weight <- occor.r
 igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
 
-graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+# === obtain graph: graph_list ===
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8) 
+
+# --- obtain landmark genes ----
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset, 
+                            Cluster, group_sample.data)
+
+landmark.top5 <- landmark.ordered$ko_name[1:5]
+
+print(paste('The top 5 landmark genes of', Cluster, 'is:'))
+print(landmark.top5)
 ```
 
-### Visualization & obtain landmark genes (TO DO)
-
--   Visualization & obtain landmark genes (TO DO)
+-   Visualization: network
 
 ```{r}
 
@@ -1044,13 +1132,6 @@ plot(igraph,
 cfg <- cluster_fast_greedy(igraph)
 plot(cfg, igraph)
 
-
-# landmark genes: merge nodes list with expression level 
-node_list <- graph_list[[1]]
-edge_list <- graph_list[[2]]
-
-
-# 也可能与nodes、list无关，只要是expression top3即可？
 ```
 
 # DEMO3: Yellow light induced denitrifier based on metagenomics
