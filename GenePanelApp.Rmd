@@ -735,7 +735,7 @@ p <- Clustering(dataset, group, SubDataset)
 p
 ```
 
-```{r DataLoader}
+```{r}
 # --- load functional genes ---
 library(dplyr)
 
@@ -761,7 +761,7 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 ## APP2: Panel enrichment analysis
 
-```{r Cluster Analysis}
+```{r}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
@@ -824,7 +824,7 @@ analysis with proper threshold.
 -   In this case, it can be observed clearly that cluster 3 is the hub
     gene panel with high expression level.
 
-```{r GPsEnrichComparison}
+```{r}
 # setting parameters
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Yellow_vs_Dark'
@@ -848,7 +848,7 @@ genetic topology.
 The occor.r and graph_list can also be utilized for visualization in
 Gephi or R.
 
-```{r dataloader}
+```{r}
 # setting parameters
 dataset <- 'LY_9samples_metatranscriptomics'
 group <- 'Yellow_vs_Dark'
@@ -910,8 +910,8 @@ plot(igraph,
      vertex.color = '#BEBADAFF', edge.color = E(igraph)$color,
      layout = layout_in_circle)
 
-cfg <- cluster_fast_greedy(igraph)
-plot(cfg, igraph)
+# cfg <- cluster_fast_greedy(igraph)
+# plot(cfg, igraph)
 ```
 
 # DEMO2: Blue light induced optogenetic denitrifier
@@ -929,7 +929,7 @@ p <- Clustering(dataset, group, SubDataset)
 p
 ```
 
-```{r DataLoader}
+```{r}
 # --- load functional genes ---
 library(dplyr)
 
@@ -958,7 +958,7 @@ Cluster 1 Cluster 2 Cluster 3 Cluster 4 Cluster 5 Cluster 6 Cluster 7
 
 ## APP2: Panel enrichment analysis
 
-```{r Cluster Analysis}
+```{r}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
@@ -1055,7 +1055,7 @@ analysis with proper threshold.
 -   In this case, it can be observed clearly that cluster 3 is the hub
     gene panel with high expression level.
 
-```{r GPsEnrichComparison}
+```{r}
 # setting parameters
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Blue_vs_Dark'
@@ -1067,7 +1067,7 @@ p
 
 ## APP4: Topology Network with landmark genes regulatory strategy
 
-```{r dataloader}
+```{r}
 # setting parameters
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Blue_vs_Dark'
@@ -1213,7 +1213,7 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 ```
 
-```{r Cluster Analysis}
+```{r}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
@@ -1311,7 +1311,7 @@ p
 [1] "The total gene number of Cluster 7 is: 13"
 ```
 
-```{r Annotation, extract cluster}
+```{r}
 # setting parameters
 dataset = 'LY_15samples_metagenomics'
 group = 'Blue_vs_Dark'
@@ -1335,7 +1335,7 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 -   'group_blue.csv' need to be manually created
 
-```{r Cluster Analysis}
+```{r}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
@@ -1414,7 +1414,7 @@ X: (964, 5)
 ### APP1: 2D-Visualization of gene panels (cluster)
 
 ```{r}
-rm(list=ls()) 
+# rm(list=ls()) 
 # setting parameters
 dataset = 'ZJ_12samplesEES_metagenomics'
 group = 'NHQ_vs_Control'
@@ -1437,7 +1437,7 @@ p
     [1] "The total gene number of Cluster 7 is: 15"
     ```
 
-```{r Annotation, extract cluster}
+```{r}
 # setting parameters
 dataset = 'ZJ_12samplesEES_metagenomics'
 group = 'NHQ_vs_Control'
@@ -1463,8 +1463,8 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 -   group_by, summarise: name need to be set based on the samples' name
 
-```{r Cluster Analysis}
-rm(list=ls()) 
+```{r}
+# rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
 dataset <- 'ZJ_12samplesEES_metagenomics'

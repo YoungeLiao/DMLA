@@ -1,5 +1,7 @@
 # README
 
+DMLA: Discover-model-learn-advance cycle for unlocking nature as a code base. 
+
 ## Usage
 
 - Preparation: 
@@ -64,8 +66,19 @@
   - Output: DESeq results, Graph data info, DGI raw data for graph learning
   - 
 
-
-
-一带一路的清华力量：青年融入一带一路人文交流
-
 - 
+
+### Paper revision
+
+1. **先写、能改的尽量都修改，然后出plan**
+   1. **revision notes**
+   2. 参考其他文章
+2. **Documentation**
+   1. basic documentation
+   2. 
+3. **CO2代码**
+   1. Basic
+4. 
+5. 图修改（A, a）
+6. 
+7. 
