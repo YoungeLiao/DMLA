@@ -1,6 +1,6 @@
 # Here is configuration setting.
-dataset_name = 'LY_15samples_metagenomics'
-group = 'Blue_vs_Dark'
+dataset_name = 'ZJ_12samples_metatranscriptomics'
+group = 'Blue_vs_White'
 # SubDataset <- 'YvsD_SubCell_dgi'
 
 config = {
@@ -12,13 +12,13 @@ config = {
     'args_model_path': '../data/' + dataset_name + '/output_data/' + group +'/generated_data/',
 
     # === data preprocessing ===
-    'threshold' : 2, # 0.4, 4
-    'num_feature': 15,
+    'threshold' : 0.04, # 0.4, 4
+    'num_feature': 12,
 
     # === training ===
     'args_n_clusters': 7, # number of clusters desired
     'args_cluster': 10, # run cluster or not 
-    'args_num_epoch': 20000, # epoch
+    'args_num_epoch': 10000, # epoch
     'batch_size': 1,
     'args_DGI': 1,
     'args_lambda_I': 0.8,

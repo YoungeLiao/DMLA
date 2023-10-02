@@ -1,0 +1,4 @@
+"level3_pathway_name","Nitritation1mean","Nitritation2mean","Nitritation3mean","Denitrification1mean","Denitrification2mean","Denitrification3mean","pvalue_Denitrification","Denitrification_vs_Nitritation","Denitrification"
+"Longevity regulating pathway - multiple species",0.486807272,0.568998108,0.438220124,0.510284401,0.627446425,0.624266594,0.174920754448829,0.634569225472191,0.332947670333333
+"Metabolic pathways;Lipopolysaccharide biosynthesis;Biosynthesis of nucleotide sugars",0.43672422,0.687557301,0.884555436,0.298556091,0.554492916,0.385602438,0.179100951505669,0.914705301393803,0.554829348666667
+"Vancomycin resistance;D-Amino acid metabolism;Metabolic pathways;Peptidoglycan biosynthesis",0.608994926,0.666971753,0.42903587,0.289617286,0.48899212,0.454212624,0.172424334022138,1.05867768890035,0.436984983333333

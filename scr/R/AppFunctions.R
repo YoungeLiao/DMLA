@@ -53,6 +53,53 @@ cluster_pale <- c('#8DD3C7FF','#BEBADAFF',"#FB8072FF", "#FDB462FF")
 
 
 # === APP1 functions ===
+# basic_var <- function(dataset, group, SubDataset){
+#   # --- define path ---
+#   label_path <- paste("./data/", dataset, '/output_data/', SubDataset, '/generated_data/types.txt', sep = '')
+#   output_path <- paste("./data/", dataset, "/inputdata/", sep = '') 
+#   graphdata.path <- paste("./data/", dataset, "/inputdata/graphdata_", group, '.csv', sep = '')
+#   fig.path <- paste("./data/", dataset, "/output_data/Figures", sep = '') 
+#   graphdata.labeled.path <- paste("./data/", dataset, "/inputdata/graphdata_", group, 'labeled.csv', sep = '')
+#   # annotation
+#   kegg_anno.path <- paste("./data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '') 
+#   Sub_Swiss.path <- paste("./data/", dataset, "/inputdata/SubSwissExpre.csv", sep = '') 
+#   # --- load data ---
+#   graphdata <- read.csv(graphdata.path, header = TRUE)
+#   labels <- paste('Cluster',as.vector(apply(read.table(label_path, sep='\t', header = F)+1, 2, as.factor)))
+#   graphdata$Cluster <- labels
+#   
+#   # save labeled data
+#   if (file.exists(graphdata.labeled.path)){
+#     print(paste("File", graphdata.labeled.path, "exists."))
+#   } else {
+#     write.csv(graphdata, graphdata.labeled.path, row.names = FALSE)
+#   }
+#   
+#   # load kegg annotation
+#   if (file.exists(kegg_anno.path)){
+#     kegg_anno <- read.csv(kegg_anno.path)
+#     matched_kegg <- merge(graphdata[,-(length(graphdata)-2)], kegg_anno, by = 'id')
+#     Sub_Swiss = NA
+#     matched_swiss = NA
+#   } else {
+#     print('Skipped: lack of kegg annotation data.')
+#   }
+#   
+#   if (file.exists(Sub_Swiss.path)){
+#     Sub_Swiss <- read.csv(Sub_Swiss.path)
+#     matched_swiss <- merge(graphdata[-c((length(graphdata)-4):(length(graphdata)-1))], Sub_Swiss, by = 'id')
+#     matched_kegg <- merge(matched_swiss, kegg_anno, by = 'id')
+#   }
+#   
+#   # return var list 
+#   var_list <- list(label_path, output_path, graphdata.path, fig.path, kegg_anno.path, 
+#                    Sub_Swiss.path,
+#                    graphdata, labels, 
+#                    kegg_anno, Sub_Swiss,
+#                    matched_swiss, matched_kegg)
+#   return(var_list)
+# }
+
 basic_var <- function(dataset, group, SubDataset){
   # --- define path ---
   label_path <- paste("./data/", dataset, '/output_data/', SubDataset, '/generated_data/types.txt', sep = '')
@@ -78,7 +125,7 @@ basic_var <- function(dataset, group, SubDataset){
   # load kegg annotation
   if (file.exists(kegg_anno.path)){
     kegg_anno <- read.csv(kegg_anno.path)
-    matched_kegg <- merge(graphdata[,-(length(graphdata)-2)], kegg_anno, by = 'id')
+    matched_kegg <- merge(graphdata, kegg_anno, by = 'id')
     Sub_Swiss = NA
     matched_swiss = NA
   } else {
@@ -88,7 +135,7 @@ basic_var <- function(dataset, group, SubDataset){
   if (file.exists(Sub_Swiss.path)){
     Sub_Swiss <- read.csv(Sub_Swiss.path)
     matched_swiss <- merge(graphdata[-c((length(graphdata)-4):(length(graphdata)-1))], Sub_Swiss, by = 'id')
-    matched_kegg <- merge(matched_swiss, kegg_anno, by = 'id')
+    # matched_kegg <- merge(matched_swiss, kegg_anno, by = 'id')
   }
   
   # return var list 
@@ -100,8 +147,12 @@ basic_var <- function(dataset, group, SubDataset){
   return(var_list)
 }
 
-Clustering <- function(dataset, group, SubDataset){
-  
+
+Clustering <- function(dataset, group, SubDataset,
+                       reduction = 'tsne'){
+  "
+  :para reduction: 'tsne' or 'umap'
+  "
   var_list <- basic_var(dataset, group, SubDataset)
   # # --- define path ---
   # label_path <- var_list[[1]]
@@ -117,26 +168,50 @@ Clustering <- function(dataset, group, SubDataset){
   library(tidyverse)
   library(cowplot)
   library(ggplot2)
-  p <- ggplot(graphdata, aes(tSNE1,tSNE2, colour = Cluster)) +
-    geom_point(size=2, alpha = 0.8) +
-    # stat_ellipse(mapping=aes(group = Cluster,colour = Cluster), #分组边界圈
-    #              geom = "path", # other: polygon
-    #              linetype = 2,
-    #              size=0.6,
-    #              alpha=0.5) +
-    xlab(NULL) +
-    ylab(NULL) +
-    theme_cowplot() +
-    theme(
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      legend.title = element_blank(),
-      panel.border = element_blank(),
-      axis.line.x = element_line(color = "black", size = 0.5),
-      axis.line.y = element_line(color = "black", size = 0.5),
-      panel.background = element_blank()
-    ) +
-    scale_colour_manual(values = pale_25)
+  if (reduction == 'tsne'){
+    p <- ggplot(graphdata, aes(tSNE1,tSNE2, colour = Cluster)) +
+      geom_point(size=2, alpha = 0.8) +
+      # stat_ellipse(mapping=aes(group = Cluster,colour = Cluster), #分组边界圈
+      #              geom = "path", # other: polygon
+      #              linetype = 2,
+      #              size=0.6,
+      #              alpha=0.5) +
+      xlab(NULL) +
+      ylab(NULL) +
+      theme_cowplot() +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_blank(),
+        panel.border = element_blank(),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.line.y = element_line(color = "black", size = 0.5),
+        panel.background = element_blank()
+      ) +
+      scale_colour_manual(values = pale_25)
+  }else{
+    p <- ggplot(graphdata, aes(umap1, umap2, colour = Cluster)) +
+      geom_point(size=2, alpha = 0.8) +
+      # stat_ellipse(mapping=aes(group = Cluster,colour = Cluster), #分组边界圈
+      #              geom = "path", # other: polygon
+      #              linetype = 2,
+      #              size=0.6,
+      #              alpha=0.5) +
+      xlab(NULL) +
+      ylab(NULL) +
+      theme_cowplot() +
+      theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_blank(),
+        panel.border = element_blank(),
+        axis.line.x = element_line(color = "black", size = 0.5),
+        axis.line.y = element_line(color = "black", size = 0.5),
+        panel.background = element_blank()
+      ) +
+      scale_colour_manual(values = pale_25)
+  }
+  
   
   fig.path <- paste("./data/", dataset, "/output_data/Figures", sep = '') 
   ggsave(filename = paste('ClusteringLabeled_', group,'.pdf', sep = ''), width = 6, height = 5, units = 'in', path = fig.path)
@@ -216,11 +291,11 @@ obtain_pathdata <- function(dataset, group, SubDataset,
   group <- read.csv(group.path)
   
   # --- combine data ---
-  rawdata <- merge(rpkm, Cluster.data[,-c(2:length(rpkm))], by = 'id')
+  rawdata <- merge(rpkm, Cluster.data[,-c(2:10)], by = 'id') # -c(2:length(rpkm))
   samples <- colnames(rawdata)[2:length(rpkm)]
-  print('The samples and groups are as follows:')
-  print(samples)
-  print(group)
+  # print('The samples and groups are as follows:')
+  # print(samples)
+  # print(group)
   return (rawdata)
 }
 
@@ -231,10 +306,11 @@ obtain_pvalue <- function(dataset, ref_group, group_sample.data, pathway, annota
   group <- group_sample.data
   temp <- data.frame(t(pathway))
   colnames(temp) <- temp[1,]
-  temp <- temp[-1,]
   name <- colnames(temp)
+  temp <- data.frame(temp[-1,])
   
   library(ggpubr)
+  temp$group <- group$Group
   temp <- data.frame(apply(temp[,1:(length(temp))], 2, as.numeric))
   temp$group <- group$Group
   
@@ -249,19 +325,41 @@ obtain_pvalue <- function(dataset, ref_group, group_sample.data, pathway, annota
   loc <- match(ref_group, expre_group.temp)
   expre_group <- expre_group.temp[-loc]
   colnames(p_value) <- expre_group
-  # loop
-  for (i in 2:(length(temp)-1)){
-    compare_data <- temp[, c(i, length(temp))]
-    colnames(compare_data) <- c('Pathway', 'group')
-    result <- compare_means(Pathway ~ group, data = compare_data, ref.group = ref_group, 
-                            method = 't.test', 
-                            paired = FALSE)
-    p <- data.frame(t(result$p))
-    colnames(p) <- expre_group
-    p_value <- rbind(p_value, p)
+  
+  # delete columns that contain all 0
+  feature <- temp[, 1:(length(temp)-1)]
+  del <- c() # define vector to store values
+  for (i in seq(1, ncol(feature))){ # 
+    if(sum(feature[, i])==0){
+      print(i)
+      del <- append(del, -i)
+    }
+  }
+  if (length(del)){
+    feature <- feature[, del]
+    temp <- cbind(feature, temp$group)
   }
   
-  rownames(p_value) <- name
+  # loop
+  if ((length(temp)-1) != 1) {
+    for (i in 2:(length(temp)-1)){ # (length(temp)-1)
+      compare_data <- temp[, c(i, length(temp))]
+      colnames(compare_data) <- c('Pathway', 'group')
+      result <- compare_means(Pathway ~ group, data = compare_data, ref.group = ref_group, 
+                              method = 't.test', 
+                              paired = FALSE)
+      p <- data.frame(t(result$p))
+      colnames(p) <- expre_group
+      p_value <- rbind(p_value, p)
+    }
+  }
+  
+  if (length(del)){
+    rownames(p_value) <- name[del]
+  }else{
+    rownames(p_value) <- name
+  }
+  
   p_value$pathway <- rownames(p_value)
   
   colnames(p_value) <- c(paste('pvalue', colnames(p_value)[1:(length(p_value)-1)], sep = '_'), annotation.level)
@@ -273,17 +371,18 @@ obtain_pvalue <- function(dataset, ref_group, group_sample.data, pathway, annota
 
 
 ObtainStatistic <- function(pathway, df.pathlevel_p, group_sample.data){
-  mean <- apply(pathway[,2:(length(pathway)-1)], 1, mean)
+  # mean <- apply(pathway[,2:(length(pathway)-1)], 1, mean)
+  mean <- apply(df.pathlevel_p[,2:(length(df.pathlevel_p)-2)], 1, mean)
   mean_list <- list()
   sd_list <- list()
-  for (i in 1:((length(pathway)-1)/3)){
-    sd.temp <- as.data.frame(apply(pathway[,(i*3-1):(i*3+1)], 1, sd))
-    mean.temp <- as.data.frame(apply(pathway[,(i*3-1):(i*3+1)], 1, mean))
+  for (i in 1:((length(df.pathlevel_p)-2)/3)){
+    sd.temp <- as.data.frame(apply(df.pathlevel_p[,(i*3-1):(i*3+1)], 1, sd))
+    mean.temp <- as.data.frame(apply(df.pathlevel_p[,(i*3-1):(i*3+1)], 1, mean))
     sd_list[i] <- sd.temp
     mean_list[i] <- mean.temp
   }
   
-  for (i in 2:((length(pathway)-1)/3)){
+  for (i in 2:((length(df.pathlevel_p)-2)/3)){
     df.pathlevel_p[SubDataset] <- mean_list[[i]]/mean_list[[1]]
     df.pathlevel_p[unique(group_sample.data$Group)[i]] <- mean_list[[i]]
   }
@@ -299,7 +398,8 @@ last_chara <- function(string, chara=';'){
 
 enrich <- function(df.pathlevel_p, SubDataset, dataset, Cluster,
                    p_thre, FC_up, FC_down, Expre,
-                   group_sample.data){
+                   group_sample.data, 
+                   annotation.level='level3_pathway_name'){
   Path.filtered <- filter(df.pathlevel_p, (df.pathlevel_p[SubDataset] > FC_up | df.pathlevel_p[SubDataset] < FC_down) & 
                             df.pathlevel_p[colnames(df.pathlevel_p[length(df.pathlevel_p)-2])] < p_thre & 
                             df.pathlevel_p[colnames(df.pathlevel_p[length(df.pathlevel_p)])] > Expre) 
@@ -313,36 +413,59 @@ enrich <- function(df.pathlevel_p, SubDataset, dataset, Cluster,
   plot_data <- Path.filtered
   kegg_anno <- read.csv(paste("./data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '')) 
   
-  # match to obtain kegglevel2 labels
-  plot_data$KEGGBrite2 <- kegg_anno[match(plot_data$level3_pathway_name, kegg_anno$level3_pathway_name),]$level2_pathway_name
   
-  # extract the last level (after ';')
-  plot_data$kegglevel3 <- apply(plot_data['level3_pathway_name'], 2, last_chara)
-  plot_data$kegglevel2 <- apply(plot_data['KEGGBrite2'], 2, last_chara)
-  
-  # obtain data for visualization
-  start_index <- length(group_sample.data$Samples)+2
-  data <- plot_data[, c(1, start_index:(start_index+5))]
-  data$Expression <- apply(plot_data[,(start_index-3):(start_index-1)], 1, mean)
-  
-  colnames(data) <- c('level3_pathway_name', 'pvalue', 'FoldChange', 'NHQ_mean', 'KEGGBrite2', 'kegglevel3', 'kegglevel2', 'Expression')
-  
-  # visualization
-  library(ggrepel)
-  p <- ggplot(data, aes(x = pvalue, y = FoldChange, size = Expression, color = kegglevel2)) +
-    geom_point(alpha=0.7)
-  p <- p + geom_text_repel(data = data, 
-                           aes(pvalue, y = FoldChange, label = kegglevel3),
-                           size=4,color="grey20",
-                           point.padding = 0.5,hjust = 0.1,
-                           segment.color="grey20",
-                           segment.size=0.6,
-                           segment.alpha=0.8,
-                           nudge_x=0,
-                           nudge_y=0, 
-                           max.overlaps = 10
-  ) + 
-    labs(x = 'P-value', y = 'Fold change', title = fig.name)
+  if (annotation.level == 'level3_pathway_name'){
+    # match to obtain kegglevel2 labels
+    plot_data$KEGGBrite2 <- kegg_anno[match(plot_data$level3_pathway_name, kegg_anno$level3_pathway_name),]$level2_pathway_name
+    
+    # extract the last level (after ';')
+    plot_data$kegglevel3 <- apply(plot_data['level3_pathway_name'], 2, last_chara)
+    plot_data$kegglevel2 <- apply(plot_data['KEGGBrite2'], 2, last_chara)
+    
+    # obtain data for visualization
+    start_index <- length(group_sample.data$Samples)+2
+    data <- plot_data[, c(1, start_index:(start_index+5))]
+    data$Expression <- apply(plot_data[,(start_index-3):(start_index-1)], 1, mean)
+    colnames(data) <- c('level3_pathway_name', 'pvalue', 'FoldChange', 'NHQ_mean', 'KEGGBrite2', 'kegglevel3', 'kegglevel2', 'Expression')
+    
+    # visualization
+    library(ggrepel)
+    p <- ggplot(data, aes(x = pvalue, y = FoldChange, size = Expression, color = kegglevel2)) +
+      geom_point(alpha=0.7)
+    p <- p + geom_text_repel(data = data, 
+                             aes(pvalue, y = FoldChange, label = kegglevel3),
+                             size=4,color="grey20",
+                             point.padding = 0.5,hjust = 0.1,
+                             segment.color="grey20",
+                             segment.size=0.6,
+                             segment.alpha=0.8,
+                             nudge_x=0,
+                             nudge_y=0, 
+                             max.overlaps = 10
+    ) + 
+      labs(x = 'P-value', y = 'Fold change', title = fig.name)
+  } else{
+    data <- plot_data[,c(1, ((length(plot_data)-2)):length(plot_data))][1:15,]
+    colnames(data) <- c('Definition', 'pvalue', 'FoldChange', 'Expression')
+    
+    # visualization
+    library(ggrepel)
+    p <- ggplot(data, aes(x = pvalue, y = FoldChange, size = Expression, color = Definition)) +
+      geom_point(alpha=0.7)
+    p <- p + geom_text_repel(data = data, 
+                             aes(pvalue, y = FoldChange, label = Definition),
+                             size=4,color="grey20",
+                             point.padding = 0.5,hjust = 0.1,
+                             segment.color="grey20",
+                             segment.size=0.6,
+                             segment.alpha=0.8,
+                             nudge_x=0,
+                             nudge_y=0, 
+                             max.overlaps = 10
+    ) + 
+      labs(x = 'P-value', y = 'Fold change', title = fig.name)
+  }
+
   
   fig <- p + scale_size(range = c(2, 20), name="Expression") +
     scale_color_manual(values = pale_20_2) + #'#006C75', #36CFC8',
@@ -434,13 +557,13 @@ Search_GePa <- function(var_list, SearchGene=TRUE, SearchPathway=FALSE){
     
     # extract cluster 
     path.clu.distri <- table(level3_path$Cluster)
-    print(paste('Most of ', interested.gene, 'related gene belong to:'))
+    print(paste('Most of ', interested.pathway, 'related gene belong to:'))
     print(path.clu.distri[grepl(max(path.clu.distri), path.clu.distri)])
     print(paste('The cluster distribution of', interested.pathway, 'is:'))
     print(path.clu.distri)
     
     # obtain cluster 
-    temp <- as.data.frame(gene.clu.distri[grepl(max(gene.clu.distri), gene.clu.distri)])
+    temp <- as.data.frame(path.clu.distri[grepl(max(path.clu.distri), path.clu.distri)])
     Cluster <- rownames(temp)
   }
   
@@ -449,7 +572,7 @@ Search_GePa <- function(var_list, SearchGene=TRUE, SearchPathway=FALSE){
 
 
 ObtainCorNet <- function(dataset, SubDataset, Cluster, group, group_sample.data, 
-                         gene_name=TRUE, thre.p = 0.05, thre.r = 0.8){
+                         gene_name=FALSE, thre.p = 0.05, thre.r = 0.8, annotation.level='KEGG'){
   # obtain filtered pathway
   Filteredcluster.path <- paste("./data/", dataset, "/output_data/R/", SubDataset, '_', Cluster, '_Enrichment.csv', sep = '') 
   Filteredcluster <- read.csv(Filteredcluster.path)
@@ -460,27 +583,47 @@ ObtainCorNet <- function(dataset, SubDataset, Cluster, group, group_sample.data,
   # obtain ko descrption as labels
   kegg_anno.path <- paste("./data/", dataset, "/rawdata/kegg_annotation_all.csv", sep = '') 
   kegg_anno <- read.csv(kegg_anno.path)
-  path_list <- Filteredcluster$level3_pathway_name
-  
-  # initial
-  path <- path_list[1]
+
   # for loop 
-  gene_list <- rawdata[grepl(path, rawdata$level3_pathway_name), ] 
-  for (path in path_list[2:length(path_list)]){
-    list <- rawdata[grepl(path, rawdata$level3_pathway_name), ]
-    gene_list <- rbind(gene_list, list)
+  if (annotation.level == 'KEGG'){
+    path_list <- Filteredcluster$level3_pathway_name
+    
+    # initial
+    path <- path_list[1]
+    gene_list <- rawdata[grepl(path, rawdata$level3_pathway_name), ] 
+    for (path in path_list[2:length(path_list)]){
+      list <- rawdata[grepl(path, rawdata$level3_pathway_name), ]
+      gene_list <- rbind(gene_list, list)
+    }
+    gene_list <- merge(kegg_anno[c('id')], gene_list, by = 'id')
+    
+    Col.name <- c('id', 
+                  group_sample.data$Samples, 
+                  # "SignalP", "tmhmm" , 
+                  # "SwissProt_ID", "SwissProt_Description",
+                  # "level1_pathway_id", "level2_pathway_id",
+                  "level1_pathway_name", "level2_pathway_name", "level3_pathway_id", "level3_pathway_name",
+                  'ko', 'ko_name', 'ko_des', 'level3_pathway_name')
+    CorCol.name <- c('id', group_sample.data$Samples, 'ko_name')
+    Hub_group_raw <- unique(gene_list[Col.name])
+    Hub_group <- unique(Hub_group_raw[CorCol.name])
+    merge_data <- unique(Hub_group)
+  }else{
+    path_list <- Filteredcluster$Definition
+    
+    # initial
+    path <- path_list[1]
+    gene_list <- rawdata[grepl(path, rawdata$Definition), ] 
+    for (path in path_list[2:length(path_list)]){
+      list <- rawdata[grepl(path, rawdata$Definition), ]
+      gene_list <- rbind(gene_list, list)
+    }
+    
+    CorCol.name <- c('id', group_sample.data$Samples, 'Gene')
+    Hub_group <- unique(gene_list[CorCol.name])
+    merge_data <- unique(Hub_group)
   }
-  
-  Col.name <- c('id', 
-                group_sample.data$Samples, 
-                # "SignalP", "tmhmm" , 
-                "SwissProt_ID", "SwissProt_Description",
-                "level1_pathway_id", "level1_pathway_name", "level2_pathway_id", "level2_pathway_name", "level3_pathway_id", "level3_pathway_name",
-                'ko', 'ko_name', 'ko_des', 'level3_pathway_name')
-  CorCol.name <- c('id', group_sample.data$Samples, 'ko_name')
-  Hub_group_raw <- unique(gene_list[Col.name])
-  Hub_group <- unique(Hub_group_raw[CorCol.name])
-  merge_data <- unique(Hub_group)
+
   
   if (gene_name == TRUE) {
     # v1: merge gene_id and gene description
@@ -608,20 +751,28 @@ ObtainGraph <- function(dataset, SubDataset, Cluster, group, group_sample.data, 
 
 
 obtain_landmark <- function(graph_list, dataset, group, SubDataset, 
-                            Cluster, group_sample.data){
+                            Cluster, group_sample.data,
+                            annotation.level='KEGG'){
   # landmark genes: merge nodes list with expression level 
   node_list <- graph_list[[1]]
   edge_list <- graph_list[[2]]
   node_list$id <- node_list$node_id
-  # var_list <- basic_var(dataset, group, SubDataset)
-  # matched_kegg <- var_list[[length(var_list)]]
+  var_list <- basic_var(dataset, group, SubDataset)
+  matched_kegg <- var_list[[length(var_list)]]
   
   rawdata <- obtain_pathdata(dataset, group, SubDataset, Cluster)
-  
-  CorCol.name <- c('id', group_sample.data$Samples, 'ko_name', 'ko_des')
+  if (annotation.level == 'KEGG'){
+    rawdata <- merge(matched_kegg[c('id')], rawdata, by = 'id')
+    
+    CorCol.name <- c('id', group_sample.data$Samples, 'ko_name', 'ko_des')
+  }else{
+    rawdata <- merge(matched_kegg[c('id')], rawdata, by = 'id')
+    CorCol.name <- c('id', group_sample.data$Samples, 'Gene', 'Definition')
+  }
+ 
   landmark_info <- unique(rawdata[CorCol.name])
   landmark <- merge(node_list, landmark_info, by = 'id')
-  
+
   landmark$Mean <- apply(landmark[group_sample.data$Samples], 1, mean)
   landmark.ordered <- landmark[order(landmark$Mean, decreasing = TRUE),]
   return(landmark.ordered)

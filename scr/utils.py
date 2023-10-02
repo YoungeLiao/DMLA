@@ -19,7 +19,7 @@ from scipy import sparse
 
 def getNodes(config):
     all_data = pd.read_csv(config['data_path'])
-    all_features = all_data.values[:, 3: ] 
+    all_features = all_data.values[:, 2: ] 
     all_features[all_features == ''] = 0.0
     all_features = all_features.astype(np.float64) 
     
@@ -45,9 +45,6 @@ def compute_distance_matrix(X, Y, distance_matrix):
             dist = math.sqrt((X[i] - X[j])**2 + (Y[i] - Y[j])**2) # np.sqrt --> math.sqrt
             distance_matrix[i, j] = dist
 
-# === v2 ===
-# 使用Numba将计算函数转换为CUDA代码
-# @cuda.jit
 def gpu_distance_matrix(X, Y):
     X_gpu = cp.array(X).astype(cp.float64)
     Y_gpu = cp.array(Y).astype(cp.float64)
@@ -71,48 +68,11 @@ def getEdges_cuda(config):
     np.save(config['generated_data_path'] + 'edges.npy', all_edges)
     edge_data = all_edges
 
-    # # === gpu: cuda v3 ===
-
-    # all_data = pd.read_csv(config['data_path'])
-    # all_edges = all_data.values[:, :3]
-
-    # # Make output directory of generated data
-    # generated_data_path = config['generated_data_path']
-    # if not os.path.exists(generated_data_path):
-    #     os.makedirs(generated_data_path)
-
-    # np.save(config['generated_data_path'] + 'edges.npy', all_edges)
-
-    # X = all_edges[:, 1]
-    # Y = all_edges[:, 2]
-
-    # # Compute distance matrix using GPU
-    # distance_matrix = gpu_distance_matrix(X, Y)
-
-    # # Save distance matrix as a numpy array
-    # np.save(config['generated_data_path'] + 'distance_matrix.npy', distance_matrix.get())
-    
-    # # === gpu v2 ===
     X = np.array(edge_data[:, 1]).astype(np.float64)
     Y = np.array(edge_data[:, 2]).astype(np.float64)
     num_otu = len(X)
     print('Total number of DEGs:',num_otu)
 
-    # import cupy as cp
-    # distance_list = []
-    # distance_matrix = cp.zeros((num_otu, num_otu))  
-    
-    # for i in range(num_otu):
-    #     for j in range(num_otu):
-    #         if i != j:
-    #             dist = cp.linalg.norm(cp.array([X[i], Y[i]]) - cp.array([X[j], Y[j]]))  # Use CuPy's linalg.norm
-    #             distance_list.append(dist)
-    #             distance_matrix[i, j] = dist
-    
-    # # To convert distance_matrix back to a NumPy array, use cp.asnumpy()
-    # distance_matrix_np = cp.asnumpy(distance_matrix)
-            
-    # === gpu v1 ===
     distance_matrix = np.zeros((num_otu, num_otu))
 
     # Set up CUDA grid and block dimensions
@@ -135,26 +95,13 @@ def getEdges_cuda(config):
     distance_matrix = torch.from_numpy(distance_matrix).float().cuda()
     print('==== The distance matrix is ====',distance_matrix)
     print('==== The distance array is ====',distance_array)
-    
-    # distance_matrix = torch.nn.DataParallel(distance_matrix, device_ids=device_ids).float().cuda()
-    # torch.from_numpy(distance_matrix).nn.DataParallel(distance_matrix, device_ids=device_ids)
-    # distance_matrix = torch.nn.DataParallel(distance_matrix, device_ids=device_ids).float().cuda()
 
     thre = config['threshold']
     for threshold in [thre]:
         num_big = np.where(distance_array<threshold)[0].shape[0]
-        # num_big = torch.sum(distance_matrix < threshold).item()
         
         print('Threshold:', threshold, '\n', 'Links number:', num_big, '\n', 'Average Links:', str(num_big / num_otu))
-        # num_big = np.where(distance_array < threshold)[0].shape[0]
-        # print('Threshold:', threshold, '\n', 'Links number:', num_big, '\n', 'Average Links:', str(num_big / num_otu))
 
-        # distance_matrix_threshold_I_list = []
-        # distance_matrix_threshold_W_list = []
-
-        # distance_matrix_threshold_I = np.zeros(distance_matrix.shape)
-        # distance_matrix_threshold_W = np.zeros(distance_matrix.shape)
-        # Compute adjacency matrix
         distance_matrix_threshold_I = torch.zeros(distance_matrix.shape).cuda()
         distance_matrix_threshold_W = torch.zeros(distance_matrix.shape).cuda()
 
@@ -164,20 +111,11 @@ def getEdges_cuda(config):
                     distance_matrix_threshold_I[i, j] = 1
                     distance_matrix_threshold_W[i, j] = distance_matrix[i, j]
 
-        # for i in range(distance_matrix_threshold_I.shape[0]):
-        #     for j in range(distance_matrix_threshold_I.shape[1]):
-        #         if distance_matrix[i, j] <= threshold and distance_matrix[i, j] > 0:
-        #             distance_matrix_threshold_I[i, j] = 1
-        #             distance_matrix_threshold_W[i, j] = distance_matrix[i, j]
-
         # Convert adjacency matrix to CSR format and save to file
         distance_matrix_threshold_I_N_crs = sparse.csr_matrix(distance_matrix_threshold_I.cpu().numpy().astype(np.float32))
         with open(config['generated_data_path'] + 'Adjacent', 'wb') as fp:
             pickle.dump(distance_matrix_threshold_I_N_crs, fp)
-        # distance_matrix_threshold_I_N = np.float32(distance_matrix_threshold_I)
-        # distance_matrix_threshold_I_N_crs = sparse.csr_matrix(distance_matrix_threshold_I_N)
-        # with open(config['generated_data_path'] + 'Adjacent', 'wb') as fp:
-        #     pickle.dump(distance_matrix_threshold_I_N_crs, fp)
+
 
 def getEdges(config):
     all_data = pd.read_csv(config['data_path'])

@@ -22,7 +22,7 @@ conda activate venv_name
 pip install -r requirements.txt
 ```
 
-## 2 Utilization 
+## 2 Utilization tutorial
 
 ### 2.1 Directory 
 
@@ -45,11 +45,10 @@ pip install -r requirements.txt
 ├── requirements.txt # package requirements for installation
 └── scr # scripts for geometric deep learning 
     ├── config.py # configuration, i.e. parameter setting 
-    ├── data.py # data preprocessing for GNNs
     ├── main.py # main python file for conducting graph learning 
     ├── Model.py # model
     ├── __pycache__
-    ├── R # some draft R scripts, can be ommited
+    ├── R # Supplementary R scripts
     ├── Results_Analysis.py # results analysis
     └── utils.py # additional utilities
 ```
@@ -113,7 +112,11 @@ pip install -r requirements.txt
     - APP4: Topology Network with landmark genes for developing regulatory strategy
   - Output: Please refer to the demonstration and explainations in GenePanelApp.Rmd.
 
-## 3 Citing DMLA
+## 3 Case demonstrations 
+
+See: [Preprocessing.html](https://github.com/YoungeLiao/DMLA/blob/main/Preprocessing.html) for data preprocessing, and [GenePanelApp.html](https://github.com/YoungeLiao/DMLA/blob/main/GenePanelApp.html) for making the most of gene panels applications toolkits to explore your natural code base, i.e. the microbiome, and unlock the natural potential for science discovery and new biotechnology development. 
+
+## 4 Citing DMLA
 
 ```
 @article{liao2023DMLA,
@@ -125,6 +128,6 @@ publisher={Tsinghua University}
 }
 ```
 
-## 4 Contact
+## 5 Contact
 
 If you have any questions or feedback, feel free to reach Yang Liao: liaoy21@mails.tsinghua.edu.cn 

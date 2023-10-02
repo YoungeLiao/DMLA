@@ -12,7 +12,6 @@ def PCA_process(X, nps):
     return X_PC
 
 
-
 def Kmeans_cluster(X_embedding, n_clusters, merge=False):
     cluster_model = KMeans(n_clusters=n_clusters, init='k-means++', n_init=100, max_iter=1000, tol=1e-6)
     cluster_labels = cluster_model.fit_predict(X_embedding)

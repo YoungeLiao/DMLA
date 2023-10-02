@@ -2,17 +2,18 @@
 
 In this tutorial, we will demonstrate four apps that exerted the most
 potentials of geometric deep-learning results. i.e. the 'L' stage in
-DMLA cycle. That we learned what GNNs have learned from the
-domain-knowledge integrated datasets.
+DMLA cycle. Here, we developed thoes apps to unlock the natural
+potentials that GNNs have learned from the domain-knowledge integrated
+datasets.
 
 ---
 title: "Gene Panel Visualization"
 author: "Yang Liao"
-date: "2023-09-02"
+date: "2023-10-02"
 output:
   html_document: 
-    fig_width: 10
-    fig_height: 7.5
+    fig_width: 15
+    fig_height: 7
     keep_md: yes
     toc: yes
     fig_caption: yes
@@ -23,16 +24,24 @@ editor_options:
   chunk_output_type: inline
 ---
 
-## DEMO1: Yellow light induced optogenetic denitrifier
+## DEMO1.1: Yellow light induced optogenetic denitrifier based on metatranscriptomics
 
 ### APP1: 2D-Visualization of gene panels (cluster)
 
-```{r}
+basic_var() can obtain the basic variable list, including: 1.
+label_path, 2. output_path, 3. graphdata.path, 4. fig.path, 5.
+kegg_anno.path, 6. Sub_Swiss.path,7. graphdata, 8. labels, 9. kegg_anno,
+Sub_Swiss, 10. matched_swiss, 11. matched_kegg
+
+Clustering() projected the clustering results of DEGs in the 2D latent
+space to picture the gene panel.
+
+```{r chunk1}
 # setting parameters
 rm(list=ls()) 
 source('./scr/R/AppFunctions.R')
 
-dataset = 'LY_9samples_metatranscriptomics'
+dataset = 'LY_9samples_metatranscriptomics' # dataset name
 group = 'Yellow_vs_Dark'
 SubDataset <- 'YvsD_SubCell_dgi'
 
@@ -41,8 +50,19 @@ p <- Clustering(dataset, group, SubDataset)
 p
 ```
 
-```{r}
+Annotate the gene panel (clusters) or interested genes and pathways
+through function Annotation(). Before annotation, set your interested
+annotations type by define GeneSet_bycluster or GeneSet_byswiss or
+GeneSet_kegg. Then, Annotation() will save the results of annotation in
+local files, which is the annotation searching results that could be
+utilized for locating genes/clusters in the 2D latent space.
+
+The output are all unique genes. Note that some genes without annotation
+will not be taken account.
+
+```{r chunk2}
 # --- load functional genes ---
+source('./scr/R/AppFunctions.R')
 library(dplyr)
 
 # setting parameters
@@ -52,9 +72,9 @@ SubDataset <- 'YvsD_SubCell_dgi'
 
 var_list <- basic_var(dataset, group, SubDataset)
 
-GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
-GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
-GeneSet_bykegg <- list(c('Phototransduction'))
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7') # annotate gene panel information of gemes 
+GeneSet_byswiss <- list(c('nitrate', 'nitrite')) # annotate nitrate and nitrite related genes based on Swiss-Prot database.
+GeneSet_bykegg <- list(c('Phototransduction')) # annotate interested pathways, here the phototransuction pathway, based on KEGG database.
 
 # Annotation(dataset, group, SubDataset, GeneSet_bykegg,
 #            GeneSet_byswiss=0, 
@@ -65,20 +85,41 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 ```
 
-### APP2: Gene panel enrichment analysis for unlocking unknown potentials of microbiomes
+### APP2: Gene panel enrichment analysis to unlock unknown potentials of microbiomes
 
-```{r}
-# rm(list=ls()) 
+This is a powerful app at 'L' stage of DMLA cycle that can mine the
+tremendous potential of nature based on genetic codes, i.e. meta-omic
+data.
+
+Here, we will conduct pathways enrichment analysis to predict the
+collective behaviors of microbiota, as well as some unknown phenotype
+for versatile purposes, such as bio-production, pollutant removal and
+resources recovery.
+
+You need to:
+
+1.  \*Choose your interested Cluster and subdataset
+    -   set the parameter: dataset, group, SubDataset and Cluster.
+2.  \*Create group information of subdataset and set the parameters
+    -   For targeted subdataset, e.g. group_Yellow, please create a new
+        group file (e.g. group_Yellow.csv) at 'inputdata' based on
+        group.csv, keeping only reference group and experimental group.
+3.  \*Set threshod for filtering
+
+Finally, the cell will visualizes gene panel enrichment analysis.
+
+```{r chunk3}
 # --- setting parameters ---
 # *dataset
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Yellow_vs_Dark'
 SubDataset <- 'YvsD_SubCell_dgi'
-Cluster = 'Cluster 3' 
+Cluster = 'Cluster 3' # set the cluster for enrichment analysis
 
 # *set basic data for p-value and other statistic parameters calculations
-ref_group <- 'Dark'
-group_sample <- 'group_Yellow'
+ref_group <- 'Dark' # reference group, i.e. the name of control group
+group_sample <- 'group_Yellow' 
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
 annotation.level <- 'level3_pathway_name'
@@ -86,7 +127,7 @@ annotation.level <- 'level3_pathway_name'
 rawdata <- obtain_pathdata(dataset, group, SubDataset, 
                             Cluster)
 
-# *setting for visualization app
+# setting for visualization app, the plot will be saved at 'output_data/Figures/' with the name of fig.name
 fig.name <- paste(Cluster, ' of ', group_sample, sep = '')
   
 # --- obtain expression level by pathway ---
@@ -107,31 +148,40 @@ df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, 
 df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
 
 # *set threshod for filtering
-p_thre <- 0.2
-FC_up <- 2
-FC_down <- 0.5
-Expre <- 10
+p_thre <- 0.2 # threshold of p-value, i.e. significance level 
+FC_up <- 2 # upper limit of fold change
+FC_down <- 0.9 # lower limit of fold change
+Expre <- 10 # expression level/abundance
 
 # --- conduct enrichment analysis ---
 fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
                    p_thre, FC_up, FC_down, Expre,
-                   group_sample.data)
+                   group_sample.data, annotation.level)
 fig
 ```
 
-## APP3: Gene Panel comparison to identify functional gene panels
+### APP3: Gene Panel comparison
 
 To conduct gene panels comparison, enrichment analysis of targeted panel
 is a prerequisite. Please make sure to have used APP2 for enrichment
 analysis with proper threshold.
 
--   In default, all the clusters are compared.
+Based on the comparison, we can identify the role of gene panels in the
+whole gene regulatory network, such as Hub Gene Panels (HGPs) and
+Signaling Gene Panels (SGPs).
 
--   In this case, it can be observed clearly that cluster 3 is the hub
-    gene panel with high expression level.
+-   HGPs: Genes with high expression, usually corresponding to the
+    center metabolism or phenotype of microbiomes. (e.g. Cluster 3 in
+    the following case)
 
-```{r}
+-   SGPs: Genes with low expression but strikingly high fold change.
+    (e.g. Cluster 6 and Cluster 5 in the following case)
+
+In default, all the clusters will be compared.
+
+```{r chunk4}
 # setting parameters
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Yellow_vs_Dark'
 SubDataset <- 'YvsD_SubCell_dgi'
@@ -140,22 +190,27 @@ p <- GPsEnrichCompare(dataset, group, SubDataset, k=7)
 p
 ```
 
-## APP4: Topology Network with landmark genes for developing regulatory strategy
+### APP4: Topology Network with landmark genes for developing regulatory strategy
 
--   Obtain topological properties & landmark genes
+This is an incredible and powerful apps that can help develop
+biotechnology to regulate microbial community.
 
 From app3, we can identify the Hub Gene Panels (HGPs) and Signaling Gene
-Panels (HGPs).
+Panels (HGPs). To better regulate the microbiome, we construct
+regulatory network, also called interaction network, on the genes level
+based on microbial genetic topology.
 
-To better regulate the microbiome, we construct regulatory network, also
-called interaction network, on the genes level based on microbial
-genetic topology.
+Cross-platform usages: The occor.r and graph_list can also be utilized
+for visualization in Gephi or R.
 
-The occor.r and graph_list can also be utilized for visualization in
-Gephi or R.
+The output results is landmark genes list. The top 5 landmark genes'
+name will be printed, which can be utilized to develop regulatory
+strategy on the microbiota. Detail descriptions of landmark genes are
+available in variable: landmark.ordered.
 
-```{r}
+```{r chunk5}
 # setting parameters
+source('./scr/R/AppFunctions.R')
 dataset <- 'LY_9samples_metatranscriptomics'
 group <- 'Yellow_vs_Dark'
 SubDataset <- 'YvsD_SubCell_dgi'
@@ -164,28 +219,32 @@ ref_group <- 'Dark'
 group_sample <- 'group_Yellow'
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
+# *set mode of selecting cluster for topological analysis, i.e. mannually set cluster or set the targeted genes first, then search which cluster the genes subjected to. 
+Mode <- 'Manu' # another mode is: 'Manu'
 
 # --- gene panel setting ---
 # *setting for gene searching: Obtain the targeted genes and corresponding gene panel
-# method 1: manually set interested gene panel (cluster)
-Cluster <- 'Cluster 3' # HGP
-# method 2: search the gene panel that interested gene or pathway assigned to 
-interested.gene <- 'nitrite'
-interested.pathway <- 'Phototransduction'
-SearchGene <- TRUE
-SearchPathway <- FALSE
-'
-option: level3_pathway_name, ko_des, SwissProt_Description
-'
-Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+
+if (Mode == 'Search'){
+  # method 1: search the gene panel that interested gene or pathway assigned to 
+  interested.gene <- 'nitrite'
+  interested.pathway <- 'Phototransduction'
+  SearchGene <- FALSE
+  SearchPathway <- TRUE
+  # option: level3_pathway_name, ko_des, SwissProt_Description
+  Cluster <- Search_GePa(var_list, SearchGene, SearchPathway)
+} else if (Mode == 'Manu'){
+  # method 2: manually set interested gene panel (cluster)
+  Cluster <- 'Cluster 3' # HGP
+}
 
 # === obtain correlation matrix: occor.r ===
-occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8)
   
 library(igraph)
 # parameter setting*
-ExploreDegree = FALSE
-ExploreNeibor = FALSE
+ExploreDegree = FALSE # whether or not visualize the exploratory analysis on nodes degree
+ExploreNeibor = FALSE # whether or not visualize the exploratory analysis on nodes neiboring information 
 adjacency_weight <- occor.r
 igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
 
@@ -193,7 +252,7 @@ igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undir
 graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
 
 # --- obtain landmark genes ----
-landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset, 
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset,
                             Cluster, group_sample.data)
 
 landmark.top5 <- landmark.ordered$ko_name[1:5]
@@ -202,29 +261,24 @@ print(paste('The top 5 landmark genes of', Cluster, 'is:'))
 print(landmark.top5)
 ```
 
--   Visualization
+The output of above cell is as follows. it can be known that thses
+landmark genes related to protein synthesis, including molecular
+chaperone ("dnaK", "HSP90A, htpG"), DNA mismatch repair protein and
+protease, indicating that yellow light regulated the metabolic flux to
+protein synthesis. This was validated in our wet experiments, i.e. the
+significantly enhanced extracellular proteins.
 
-```{r}
-
-# 设置不同type的边颜色不同 
-pale8 <- c("#8DD3C7FF","#FFFFB3FF","#BEBADAFF","#FB8072FF","#80B1D3FF","#FDB462FF","#B3DE69FF","#FCCDE5FF")
-E(igraph)$color <- "#FB8072FF" 
-index <- E(igraph)$type == "mention"
-E(igraph)$color <- '#8DD3C7FF'
-
-plot(igraph, 
-     vertex.color = '#BEBADAFF', edge.color = E(igraph)$color,
-     layout = layout_in_circle)
-
-# cfg <- cluster_fast_greedy(igraph)
-# plot(cfg, igraph)
+```         
+[1] "The total nodes number is: 25"
+[1] "The top 5 landmark genes of Cluster 3 is:"
+[1] "dnaK, HSPA9"  "lon"          "rlmI"         "HSP90A, htpG" "mutS" 
 ```
 
-# DEMO2: Blue light induced optogenetic denitrifier
+## DEMO1.2: Blue light induced optogenetic denitrifier based on metatranscriptomics
 
-## APP1: 2D-Visualization of gene panels (cluster)
+### APP1: 2D-Visualization of gene panels (cluster)
 
-```{r}
+```{r chunk6}
 # setting parameters
 rm(list=ls()) 
 source('./scr/R/AppFunctions.R')
@@ -237,10 +291,10 @@ p <- Clustering(dataset, group, SubDataset)
 p
 ```
 
-```{r}
+```{r chunk7}
 # --- load functional genes ---
 library(dplyr)
-
+source('./scr/R/AppFunctions.R')
 # setting parameters
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Blue_vs_Dark'
@@ -252,28 +306,23 @@ GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cl
 GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
 GeneSet_bykegg <- list(c('Phototransduction'))
 
-# Annotation(dataset, group, SubDataset, GeneSet_bykegg,
-#            GeneSet_byswiss=0, 
-#            GeneSet_bycluster=0)
 Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
            GeneSet_byswiss=0, 
            GeneSet_bycluster) 
-# The output are all unique genes
+
 ```
 
-Cluster 1 Cluster 2 Cluster 3 Cluster 4 Cluster 5 Cluster 6 Cluster 7
-4828 1795 9533 1273 4198 2061 1589
+### APP2: Panel enrichment analysis
 
-## APP2: Panel enrichment analysis
-
-```{r}
+```{r chunk8}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'BvsD_SubCell_dgi'
-Cluster = 'Cluster 7' 
+Cluster = 'Cluster 4' 
 
 # *set basic data for p-value and other statistic parameters calculations
 ref_group <- 'Dark'
@@ -347,24 +396,16 @@ if (Cluster == 'Cluster 4'){
 # --- conduct enrichment analysis ---
 fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
                    p_thre, FC_up, FC_down, Expre,
-                   group_sample.data)
+                   group_sample.data, annotation.level)
 fig
 
 ```
 
-## APP3: Interested functions & genes analysis among gene panels
+### APP3: Gene Panel comparison
 
-To conduct gene panels comparison, enrichment analysis of targeted panel
-is a prerequisite. Please make sure to have used APP2 for enrichment
-analysis with proper threshold.
-
--   In default, all the clusters are compared.
-
--   In this case, it can be observed clearly that cluster 3 is the hub
-    gene panel with high expression level.
-
-```{r}
+```{r chunk9}
 # setting parameters
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'BvsD_SubCell_dgi'
@@ -373,10 +414,11 @@ p <- GPsEnrichCompare(dataset, group, SubDataset, k=7)
 p
 ```
 
-## APP4: Topology Network with landmark genes regulatory strategy
+### APP4: Topology Network with landmark genes regulatory strategy
 
-```{r}
+```{r chunk10}
 # setting parameters
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_9samples_metatranscriptomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'BvsD_SubCell_dgi'
@@ -385,36 +427,40 @@ ref_group <- 'Dark'
 group_sample <- 'group_Blue'
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
+# *set mode of selecting cluster for topological analysis, i.e. mannually set cluster or set the targeted genes first, then search which cluster the genes subjected to. 
+Mode <- 'Manu' # another mode is: 'Manu'
 
 # --- gene panel setting ---
 # *setting for gene searching: Obtain the targeted genes and corresponding gene panel
-# method 1: manually set interested gene panel (cluster)
-Cluster <- 'Cluster 3' # HGP
-# method 2: search the gene panel that interested gene or pathway assigned to 
-interested.gene <- 'nitrite'
-interested.pathway <- 'Phototransduction'
-SearchGene <- TRUE
-SearchPathway <- FALSE
-'
-option: level3_pathway_name, ko_des, SwissProt_Description
-'
-Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+
+if (Mode == 'Search'){
+  # method 1: search the gene panel that interested gene or pathway assigned to 
+  interested.gene <- 'nitrate'
+  interested.pathway <- 'Phototransduction'
+  SearchGene <- TRUE
+  SearchPathway <- FALSE
+  # option: level3_pathway_name, ko_des, SwissProt_Description
+  Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+} else if (Mode == 'Manu'){
+  # method 2: manually set interested gene panel (cluster)
+  Cluster <- 'Cluster 4' # HGP
+}
 
 # === obtain correlation matrix: occor.r ===
 occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8)
-
+  
 library(igraph)
 # parameter setting*
-ExploreDegree = FALSE
-ExploreNeibor = FALSE
+ExploreDegree = FALSE # whether or not visualize the exploratory analysis on nodes degree
+ExploreNeibor = FALSE # whether or not visualize the exploratory analysis on nodes neiboring information 
 adjacency_weight <- occor.r
 igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
 
 # === obtain graph: graph_list ===
-graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8) 
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
 
 # --- obtain landmark genes ----
-landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset, 
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset,
                             Cluster, group_sample.data)
 
 landmark.top5 <- landmark.ordered$ko_name[1:5]
@@ -423,95 +469,76 @@ print(paste('The top 5 landmark genes of', Cluster, 'is:'))
 print(landmark.top5)
 ```
 
--   Visualization: network
+The output of above cell is as follows.
 
-```{r}
+```         
+## for cluster 3:
+[1] "The total nodes number is: 85"
+[1] "The top 5 landmark genes of Cluster 4 is:"
+[1] "fliC, hag" "dapA"      "SOD2"      "rlmI"      "fliC, hag"
 
-# 设置不同type的边颜色不同 
-pale8 <- c("#8DD3C7FF","#FFFFB3FF","#BEBADAFF","#FB8072FF","#80B1D3FF","#FDB462FF","#B3DE69FF","#FCCDE5FF")
-E(igraph)$color <- "#FB8072FF" 
-index <- E(igraph)$type == "mention"
-E(igraph)$color <- '#8DD3C7FF'
+# for phototransduction: 
+[1] "Most of  Phototransduction related gene belong to:"
+Cluster 5 
+       13 
+[1] "The cluster distribution of Phototransduction is:"
 
-plot(igraph, 
-     vertex.color = '#BEBADAFF', edge.color = E(igraph)$color,
-     layout = layout_in_circle)
-
-cfg <- cluster_fast_greedy(igraph)
-plot(cfg, igraph)
-
+Cluster 3 Cluster 5 
+        5        13 
+[1] "File ./data/LY_9samples_metatranscriptomics/output_data/R/BvsD_SubCell_dgi_Cluster 5_p0.05_r0.8_CorNet.csv exists."
+[1] "The total nodes number is: 204"
+[1] "The top 5 landmark genes of Cluster 5 is:"
+[1] "hemH, FECH" "glf"        "E1.11.1.5"  "E1.11.1.19" "cfa"   
 ```
 
-# DEMO3: Yellow light induced denitrifier based on metagenomics
+For cluster 3, the HGP of blue light and also nitrate reductase assigned
+to, superoxide dismutase (SOD) and 4-hydroxy-tetrahydrodipicolinate
+synthase (DapA) are the landmark genes. Both of them are critical
+enzymes in antioxidant systems, mainly involving in superoxide
+scavenging. We also validated this in the wet experiments as mentioned
+in our manuscript.
 
-### Graph Learning Results
+For phototransduction, it can be observed that hemH/FECH, the heme is
+predicted to be effective in regulate phototransduction, i.e.
+photo-electron signaling transmission process (see manuscript for
+detailed wet- and dry-lab demenstration, or has been reported by other
+studies).
 
--   The gene panels are obtained after 20000 epochs
-
-    feature shape: (5, 57)
-
-    cuda is not available
-
-    Threshold: 4
-
-    Links number: 541
-
-    Average Links: 9.491228070175438
-
-    Adj: (57, 57) Edges: 541
-
-    X: (57, 5)
-
--   Result; SCI score (Clustering quality) is: 0.59939337
-
--   Tips: increase threshold will bring about more edges, that more
-    information can be passed to the neighboring nodes, while the
-    calculation time will also be longer and probably lead to
-    over-fitting.
+## DEMO2: Blue light induced CO2 fixation based on metatranscriptomics
 
 ### APP1: 2D-Visualization of gene panels (cluster)
 
-```{r}
-rm(list=ls()) 
-source('./scr/R/AppFunctions.R')
+```{r chunk11}
 # --- load functional genes ---
 library(dplyr)
-
+source('./scr/R/AppFunctions.R')
 # setting parameters
-dataset = 'LY_15samples_metagenomics'
-group = 'Yellow_vs_Dark'
-SubDataset <- 'Yellow_vs_Dark'
+dataset = 'ZJ_12samples_metatranscriptomics'
+group = 'Blue_vs_White'
+SubDataset <- 'Blue_vs_White'
 
 var_list <- basic_var(dataset, group, SubDataset)
-p <- Clustering(dataset, group, SubDataset)
+
+p <- Clustering(dataset, group, SubDataset, 
+                 reduction = 'umap')
 p
 ```
 
-### APP2
+### APP2: Panel enrichment analysis
 
--   output:
-
-```         
-[1] "The total gene number of Cluster 1 is: 7"
-[1] "The total gene number of Cluster 2 is: 9"
-[1] "The total gene number of Cluster 3 is: 3"
-[1] "The total gene number of Cluster 4 is: 7"
-[1] "The total gene number of Cluster 5 is: 15"
-[1] "The total gene number of Cluster 6 is: 8"
-[1] "The total gene number of Cluster 7 is: 8"
-```
-
-```{r}
-# rm(list=ls()) 
-dataset = 'LY_15samples_metagenomics'
-group = 'Yellow_vs_Dark'
-SubDataset <- 'Yellow_vs_Dark'
+```{r chunk12}
+library(dplyr)
+source('./scr/R/AppFunctions.R')
+# setting parameters
+dataset = 'ZJ_12samples_metatranscriptomics'
+group = 'Blue_vs_White'
+SubDataset <- 'Blue_vs_White'
 
 var_list <- basic_var(dataset, group, SubDataset)
 
-GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
-# GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
-# GeneSet_bykegg <- list(c('Phototransduction'))
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7') # annotate gene panel information of gemes 
+GeneSet_byswiss <- list(c('nitrate', 'nitrite')) # annotate nitrate and nitrite related genes based on Swiss-Prot database.
+GeneSet_bykegg <- list(c('Phototransduction')) # annotate interested pathways, here the phototransuction pathway, based on KEGG database.
 
 # Annotation(dataset, group, SubDataset, GeneSet_bykegg,
 #            GeneSet_byswiss=0, 
@@ -519,84 +546,208 @@ GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'C
 Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
            GeneSet_byswiss=0, 
            GeneSet_bycluster)
-
 ```
 
-```{r}
+```         
+[1] "The total gene number of Cluster 1 is: 418"
+[1] "The total gene number of Cluster 2 is: 1881"
+[1] "The total gene number of Cluster 3 is: 1757"
+[1] "The total gene number of Cluster 4 is: 828"
+[1] "The total gene number of Cluster 5 is: 889"
+[1] "The total gene number of Cluster 6 is: 2570"
+[1] "The total gene number of Cluster 7 is: 3434"
+```
+
+'annotation.level' is the parameter that you can set to your interested
+annotation database, such as KEGG pathways, enzymes, Swissprots, etc. In
+this case demonstration, we utilized gene definition as annotation to
+conduct enrichment analysis.
+
+```{r chunk13}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
-dataset = 'LY_15samples_metagenomics'
-group = 'Yellow_vs_Dark'
-SubDataset <- 'Yellow_vs_Dark'
-Cluster = 'Cluster 5' 
+source('./scr/R/AppFunctions.R')
+dataset = 'ZJ_12samples_metatranscriptomics'
+group = 'Blue_vs_White'
+SubDataset <- 'Blue_vs_White'
+Cluster = 'Cluster 3' 
 
 # *set basic data for p-value and other statistic parameters calculations
-ref_group <- 'Dark'
-group_sample <- 'group_Yellow'
+ref_group <- 'White'
+group_sample <- 'group_Blue'
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
-annotation.level <- 'level3_pathway_name'
+annotation.level <- 'Definition'
 # === pvalue and statistic analysis ===
 rawdata <- obtain_pathdata(dataset, group, SubDataset, 
                             Cluster)
 
 # *setting for visualization app
-fig.name <- paste('HGP of ', group_sample, sep = '')
+fig.name <- paste(Cluster, ' of ', group_sample, sep = '')
   
 # --- obtain expression level by pathway ---
 library(dplyr)
-pathway <- rawdata %>% 
-  group_by(level3_pathway_name) %>%
-  summarise(Dark1mean = mean(D1A), 
-            Dark2mean = mean(D2A),
-            Dark3mean = mean(D3A),
-            Yellow1mean = mean(Y1A), 
-            Yellow2mean = mean(Y2A),
-            Yellow3mean = mean(Y3A)) 
+pathway <- rawdata %>%
+  group_by(Definition) %>%
+  summarise(White1mean = mean(W_1),
+            White2mean = mean(W_2),
+            White3mean = mean(W_3),
+            Blue1mean = mean(B_1),
+            Blue2mean = mean(B_2),
+            Blue3mean = mean(B_3))
 
 # --- obtain p-value ---
-df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+df.pathlevel_p <- obtain_pvalue(dataset, ref_group, group_sample.data,  pathway, annotation.level)
 
 # --- obtain other statistic parameters ---
 df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
 
 # *set threshod for filtering
-p_thre <- 0.275
-FC_up <- 1
-FC_down <- 1
-Expre <- 0
+if (Cluster == 'Cluster 4'){
+  p_thre <- 0.05
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 20
+} else if (Cluster == 'Cluster 5'){
+  p_thre <- 0.001
+  FC_up <- 5
+  FC_down <- 0.5
+  Expre <- 20
+} else if (Cluster == 'Cluster 7'){
+  p_thre <- 0.001
+  FC_up <- 5
+  FC_down <- 0.5
+  Expre <- 20
+} else if (Cluster == 'Cluster 2'){
+  p_thre <- 0.005
+  FC_up <- 5
+  FC_down <- 0.4
+  Expre <- 20
+} else if (Cluster == 'Cluster 3'){
+  p_thre <- 0.05
+  FC_up <- 10
+  FC_down <- 0.5
+  Expre <- 20
+} else if (Cluster == 'Cluster 1'){
+  p_thre <- 0.05
+  FC_up <- 2
+  FC_down <- 0.5
+  Expre <- 10
+} else if (Cluster == 'Cluster 6'){
+  p_thre <- 0.05
+  FC_up <- 5
+  FC_down <- 0.5
+  Expre <- 20
+}
+
 
 # --- conduct enrichment analysis ---
-fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
-                   p_thre, FC_up, FC_down, Expre,
-                   group_sample.data)
+fig <- enrich(df.pathlevel_p, SubDataset, dataset, # top 15 will be depicted 
+              Cluster,
+              p_thre, FC_up, FC_down, Expre,
+              group_sample.data, 
+              annotation.level = 'Definition')
 fig
 ```
 
-# DEMO3: Blue light induced metagenomics
+-   Enrichment analysis revealed that aldehyde dehydrogenase and
+    inorganic phosphate transporter are two of the most significant
+    genes up-regulated blue light.
 
-### Graph learning
+### APP3: Gene Panel comparison
 
-feature shape: (5, 88)
+-   It can be clearly observed that cluster 3 was significantly
+    up-regulated, as well as presenting high expression levels under
+    blue light irradiation. Thus, gene panel 3 is our interested
+    functional panel and further analysis will be conducted on it.
 
-cuda is not available
+```{r chunk14}
+# setting parameters
+source('./scr/R/AppFunctions.R')
+dataset = 'ZJ_12samples_metatranscriptomics'
+group = 'Blue_vs_White'
+SubDataset <- 'Blue_vs_White'
 
-Threshold: 2
+p <- GPsEnrichCompare(dataset, group, SubDataset, k=7) 
+p
+```
 
-Links number: 1040
+### APP4: Topology Network with landmark genes regulatory strategy
 
-Average Links: 11.818181818181818
+```{r chunk15}
+# setting parameters
+source('./scr/R/AppFunctions.R')
+dataset = 'ZJ_12samples_metatranscriptomics'
+group = 'Blue_vs_White'
+SubDataset <- 'Blue_vs_White'
+# *set basic data for statistic parameters calculations
+ref_group <- 'White'
+group_sample <- 'group_Blue'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+# *set mode of selecting cluster for topological analysis, i.e. mannually set cluster or set the targeted genes first, then search which cluster the genes subjected to. 
+Mode <- 'Manu' # another mode is: 'Manu'
 
-Adj: (88, 88) Edges: 1040
+# --- gene panel setting ---
+# *setting for gene searching: Obtain the targeted genes and corresponding gene panel
 
-X: (88, 5)
+if (Mode == 'Search'){
+  # method 1: search the gene panel that interested gene or pathway assigned to 
+  interested.gene <- 'nitrate'
+  interested.pathway <- 'Phototransduction'
+  SearchGene <- TRUE
+  SearchPathway <- FALSE
+  # option: level3_pathway_name, ko_des, SwissProt_Description
+  Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+} else if (Mode == 'Manu'){
+  # method 2: manually set interested gene panel (cluster)
+  Cluster <- 'Cluster 3' # HGP
+}
 
--   SCI score (Clustering quality) is: 0.60509825
+# === obtain correlation matrix: occor.r ===
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8, annotation.level='Definition')
+  
+library(igraph)
+# parameter setting*
+ExploreDegree = FALSE # whether or not visualize the exploratory analysis on nodes degree
+ExploreNeibor = FALSE # whether or not visualize the exploratory analysis on nodes neiboring information 
+adjacency_weight <- occor.r
+igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
+
+# === obtain graph: graph_list ===
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+
+# --- obtain landmark genes ----
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset,
+                            Cluster, group_sample.data, annotation.level='Definition')
+
+landmark.top5 <- landmark.ordered$Gene[1:6]
+landmark.top5.define <- landmark.ordered$Definition[1:6]
+
+print(paste('The top 5 landmark genes of', Cluster, 'is:'))
+print(landmark.top5)
+print('Their corresponding function definition are:')
+print(landmark.top5.define)
+```
+
+```         
+[1] "The top 5 landmark genes of Cluster 3 is:"
+[1] "kbe:J4771_10640"    "kbe:J4771_05795"    "ctak:4412677_01929" "kbe:J4771_07335"    "ccas:EIB73_06150"    "kbe:J4771_06880"   
+[1] "Their corresponding function definition are:"
+[1] "small subunit ribosomal protein S20" "small subunit ribosomal protein S16" "large subunit ribosomal protein L17"
+[4] "small subunit ribosomal protein S11" "DNA-binding protein HU-beta"   "large subunit ribosomal protein L1" 
+```
+
+-   Under blue light illumination, the transcriptomic activities,
+    especially rRNA, were activated.
+
+## DEMO3: Blue light regulated denitrifier based on metagenomics
 
 ### APP1: 2D-Visualization of gene panels (cluster)
 
-```{r}
+```{r chunk16}
+source('./scr/R/AppFunctions.R')
 # --- load functional genes ---
 library(dplyr)
 
@@ -620,8 +771,9 @@ p
 [1] "The total gene number of Cluster 7 is: 13"
 ```
 
-```{r}
+```{r chunk17}
 # setting parameters
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_15samples_metagenomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'Blue_vs_Dark'
@@ -644,14 +796,15 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
 
 -   'group_blue.csv' need to be manually created
 
-```{r}
+```{r chunk18}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
+source('./scr/R/AppFunctions.R')
 dataset = 'LY_15samples_metagenomics'
 group = 'Blue_vs_Dark'
 SubDataset <- 'Blue_vs_Dark'
-Cluster = 'Cluster 4' # 410 genes
+Cluster = 'Cluster 4' 
 
 # *set basic data for p-value and other statistic parameters calculations
 ref_group <- 'Dark'
@@ -664,30 +817,62 @@ rawdata <- obtain_pathdata(dataset, group, SubDataset,
                             Cluster)
 
 # *setting for visualization app
-fig.name <- paste('HGP of ', group_sample, sep = '')
+fig.name <- paste(Cluster, ' of ', group_sample, sep = '')
   
 # --- obtain expression level by pathway ---
 library(dplyr)
-pathway <- rawdata %>% 
+pathway <- rawdata %>%
   group_by(level3_pathway_name) %>%
-  summarise(Dark1mean = mean(D1A), 
+  summarise(Dark1mean = mean(D1A),
             Dark2mean = mean(D2A),
             Dark3mean = mean(D3A),
-            Blue1mean = mean(B1A), 
+            Blue1mean = mean(B1A),
             Blue2mean = mean(B2A),
-            Blue3mean = mean(B3A)) 
+            Blue3mean = mean(B3A))
 
 # --- obtain p-value ---
-df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+df.pathlevel_p <- obtain_pvalue(dataset, ref_group, group_sample.data,  pathway, annotation.level)
 
 # --- obtain other statistic parameters ---
 df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
 
 # *set threshod for filtering
-p_thre <- 0.275
-FC_up <- 1
-FC_down <- 1
-Expre <- 0
+if (Cluster == 'Cluster 4'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 5'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 7'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 2'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 3'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 0.5
+  Expre <- 0
+} else if (Cluster == 'Cluster 1'){
+  p_thre <- 0.2
+  FC_up <- 2
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 6'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+}
+
 
 # --- conduct enrichment analysis ---
 fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
@@ -696,68 +881,124 @@ fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
 fig
 ```
 
-# DEMO4: EES-NHQ
+The above gene panel enrichment on cluster 4 unveiled that blue light
+mainly contribute to activating signals transduction through
+two-component system. This is also consistent with the results of
+metatranscriptomic analysis.
 
-### Graoh learning
+### APP3: Gene Panel comparison
 
-dataset_name = 'ZJ_12samplesEES_metagenomics'
+```{r chunk19}
+# setting parameters
+source('./scr/R/AppFunctions.R')
 
-group = 'NHQ_vs_Control'
+dataset = 'LY_15samples_metagenomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'Blue_vs_Dark'
 
-feature shape: (5, 964)
+p <- GPsEnrichCompare(dataset, group, SubDataset, k=4) 
+p
+```
 
-cuda is not available
+### APP4: Topology Network with landmark genes for developing regulatory strategy
 
-Threshold: 1
+```{r chunk20}
+# setting parameters
+source('./scr/R/AppFunctions.R')
+dataset = 'LY_15samples_metagenomics'
+group = 'Blue_vs_Dark'
+SubDataset <- 'Blue_vs_Dark'
+# *set basic data for statistic parameters calculations
+ref_group <- 'Dark'
+group_sample <- 'group_Blue'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+# *set mode of selecting cluster for topological analysis, i.e. mannually set cluster or set the targeted genes first, then search which cluster the genes subjected to. 
+Mode <- 'Manu' # another mode is: 'Manu'
 
-Links number: 12492
+# --- gene panel setting ---
+# *setting for gene searching: Obtain the targeted genes and corresponding gene panel
 
-Average Links: 12.95850622406639
+if (Mode == 'Search'){
+  # method 1: search the gene panel that interested gene or pathway assigned to 
+  interested.gene <- 'nitrate'
+  interested.pathway <- 'Phototransduction'
+  SearchGene <- TRUE
+  SearchPathway <- FALSE
+  # option: level3_pathway_name, ko_des, SwissProt_Description
+  Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+} else if (Mode == 'Manu'){
+  # method 2: manually set interested gene panel (cluster)
+  Cluster <- 'Cluster 4' # HGP
+}
 
-Adj: (964, 964) Edges: 12492
+# === obtain correlation matrix: occor.r ===
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8)
+  
+library(igraph)
+# parameter setting*
+ExploreDegree = FALSE # whether or not visualize the exploratory analysis on nodes degree
+ExploreNeibor = FALSE # whether or not visualize the exploratory analysis on nodes neiboring information 
+adjacency_weight <- occor.r
+igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
 
-X: (964, 5)
+# === obtain graph: graph_list ===
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
 
--   SCI score (Clustering quality) is: 0.5108492
+# --- obtain landmark genes ----
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset,
+                            Cluster, group_sample.data)
+
+landmark.top5 <- landmark.ordered$ko_name[1:5]
+
+print(paste('The top 5 landmark genes of', Cluster, 'is:'))
+print(landmark.top5)
+```
+
+-   Thus, the landmark genes of cluster 4 is: "mlq:ASQ50_10875"
+    "rbg:BG454_08250" "-" "psa:PST_0389" [5] "cbaa:SRAA_0573"
+
+## DEMO4: Engineering case
 
 ### APP1: 2D-Visualization of gene panels (cluster)
 
-```{r}
+-   Gene panel visualization
+
+```{r chunk21}
 rm(list=ls()) 
 source('./scr/R/AppFunctions.R')
+# --- load functional genes ---
+library(dplyr)
+
 # setting parameters
-dataset = 'ZJ_12samplesEES_metagenomics'
-group = 'NHQ_vs_Control'
-SubDataset <- 'NHQ_vs_Control'
+dataset='JS_18samples_metagenomics' # dataset 
+group='Denitrification_vs_Nitritation' # subdataset 
+SubDataset <- 'Denitrification_vs_Nitritation' 
 
 var_list <- basic_var(dataset, group, SubDataset)
 p <- Clustering(dataset, group, SubDataset)
 p
+
 ```
 
--   Output
+-   Annotation
 
-    ```         
-    [1] "The total gene number of Cluster 1 is: 213"
-    [1] "The total gene number of Cluster 2 is: 64"
-    [1] "The total gene number of Cluster 3 is: 58"
-    [1] "The total gene number of Cluster 4 is: 410"
-    [1] "The total gene number of Cluster 5 is: 8"
-    [1] "The total gene number of Cluster 6 is: 3"
-    [1] "The total gene number of Cluster 7 is: 15"
-    ```
+```{r chunk22}
+# --- load functional genes ---
+source('./scr/R/AppFunctions.R')
+# --- load functional genes ---
+library(dplyr)
 
-```{r}
 # setting parameters
-dataset = 'ZJ_12samplesEES_metagenomics'
-group = 'NHQ_vs_Control'
-SubDataset <- 'NHQ_vs_Control'
+dataset='JS_18samples_metagenomics' # dataset 
+group='Denitrification_vs_Nitritation' # subdataset 
+SubDataset <- 'Denitrification_vs_Nitritation' 
 
 var_list <- basic_var(dataset, group, SubDataset)
 
-GeneSet_bycluster <- list('Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7')
-# GeneSet_byswiss <- list(c('nitrate', 'nitrite'))
-# GeneSet_bykegg <- list(c('Phototransduction'))
+GeneSet_bycluster <- list('Cluster 1', 'Cluster 2','Cluster 3', 'Cluster 4', 'Cluster 5', 'Cluster 6', 'Cluster 7') # annotate gene panel information of gemes 
+GeneSet_byswiss <- list(c('nitrate', 'nitrite')) # annotate nitrate and nitrite related genes based on Swiss-Prot database.
+GeneSet_bykegg <- list(c('Phototransduction')) # annotate interested pathways, here the phototransuction pathway, based on KEGG database.
 
 # Annotation(dataset, group, SubDataset, GeneSet_bykegg,
 #            GeneSet_byswiss=0, 
@@ -767,24 +1008,34 @@ Annotation(dataset, group, SubDataset, GeneSet_bykegg=0,
            GeneSet_bycluster)
 ```
 
+-   The annotated genes number of different gene panels are as follows:
+
+```         
+[1] "The total gene number of Cluster 1 is: 187"
+[1] "The total gene number of Cluster 2 is: 10"
+[1] "The total gene number of Cluster 3 is: 0"
+[1] "The total gene number of Cluster 4 is: 57"
+[1] "The total gene number of Cluster 5 is: 0"
+[1] "The total gene number of Cluster 6 is: 16"
+[1] "The total gene number of Cluster 7 is: 7"
+```
+
 ### APP2: Panel enrichment analysis
 
--   Obtain Pathway
-
--   group_by, summarise: name need to be set based on the samples' name
-
-```{r}
+```{r chunk23}
 # rm(list=ls()) 
 # --- setting parameters ---
 # *dataset
-dataset <- 'ZJ_12samplesEES_metagenomics'
-group = 'NHQ_vs_Control'
-SubDataset <- 'NHQ_vs_Control'
-Cluster = 'Cluster 4' # 410 genes
+source('./scr/R/AppFunctions.R')
+# setting parameters
+dataset='JS_18samples_metagenomics' # dataset 
+group='Denitrification_vs_Nitritation' # subdataset 
+SubDataset <- 'Denitrification_vs_Nitritation' 
+Cluster = 'Cluster 1' 
 
 # *set basic data for p-value and other statistic parameters calculations
-ref_group <- 'Control'
-group_sample <- 'group_NHQ'
+ref_group <- 'Nitritation'
+group_sample <- 'group_Denitrification'
 group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
 group_sample.data <- read.csv(group_sample.path)
 annotation.level <- 'level3_pathway_name'
@@ -793,35 +1044,150 @@ rawdata <- obtain_pathdata(dataset, group, SubDataset,
                             Cluster)
 
 # *setting for visualization app
-fig.name <- paste('HGP of ', group_sample, sep = '')
+fig.name <- paste(Cluster, ' of ', group_sample, sep = '')
   
 # --- obtain expression level by pathway ---
 library(dplyr)
-pathway <- rawdata %>% 
+pathway <- rawdata %>%
   group_by(level3_pathway_name) %>%
-  summarise(Control1mean = mean(z1_1), 
-            Control2mean = mean(z1_2),
-            Control3mean = mean(z1_3),
-            NHQ1mean = mean(z10_1), 
-            NHQ2mean = mean(z10_2),
-            NHQ3mean = mean(z10_3)) 
+  summarise(Nitritation1mean = mean(Nitritation_1),
+            Nitritation2mean = mean(Nitritation_2),
+            Nitritation3mean = mean(Nitritation_3),
+            Denitrification1mean = mean(Denitrification_1),
+            Denitrification2mean = mean(Denitrification_2),
+            Denitrification3mean = mean(Denitrification_3))
 
 # --- obtain p-value ---
-df.pathlevel_p <- obtain_pvalue(dataset,ref_group, group_sample.data,  pathway, annotation.level)
+df.pathlevel_p <- obtain_pvalue(dataset, ref_group, group_sample.data,  pathway, annotation.level)
 
 # --- obtain other statistic parameters ---
 df.pathlevel_p <- ObtainStatistic(pathway, df.pathlevel_p, group_sample.data)
 
 # *set threshod for filtering
-p_thre <- 0.275
-FC_up <- 1
-FC_down <- 1
-Expre <- 1
+if (Cluster == 'Cluster 4'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 5'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 7'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 2'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 3'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 0.5
+  Expre <- 0
+} else if (Cluster == 'Cluster 1'){
+  p_thre <- 0.2
+  FC_up <- 2
+  FC_down <- 1
+  Expre <- 0
+} else if (Cluster == 'Cluster 6'){
+  p_thre <- 0.2
+  FC_up <- 1
+  FC_down <- 1
+}
+
 
 # --- conduct enrichment analysis ---
 fig <- enrich(df.pathlevel_p, SubDataset, dataset, Cluster,
                    p_thre, FC_up, FC_down, Expre,
-                   group_sample.data)
+                   group_sample.data, annotation.level)
 fig
-
 ```
+
+-   From the gene panel enrichment results, it can be seen that
+    denitrification microbiome sampled from practical engineering tend
+    to synthesis more EPS, including lipopolysaccharide and
+    exopolysaccharide, which was regulated by two-component system. This
+    is also consistent well with the batch experiments results.
+
+### APP3: Gene Panel comparison
+
+```{r chunk24}
+# setting parameters
+source('./scr/R/AppFunctions.R')
+
+dataset='JS_18samples_metagenomics' # dataset 
+group='Denitrification_vs_Nitritation' # subdataset 
+SubDataset <- 'Denitrification_vs_Nitritation' 
+
+p <- GPsEnrichCompare(dataset, group, SubDataset, k=2) 
+p
+```
+
+### APP4: Topology Network with landmark genes for developing regulatory strategy
+
+```{r chunk25}
+# setting parameters
+source('./scr/R/AppFunctions.R')
+dataset='JS_18samples_metagenomics' # dataset 
+group='Denitrification_vs_Nitritation' # subdataset 
+SubDataset <- 'Denitrification_vs_Nitritation' 
+# *set basic data for statistic parameters calculations
+ref_group <- 'Nitritation'
+group_sample <- 'group_Denitrification'
+group_sample.path <- paste('./data/', dataset, '/inputdata/', group_sample, '.csv', sep = '')
+group_sample.data <- read.csv(group_sample.path)
+# *set mode of selecting cluster for topological analysis, i.e. mannually set cluster or set the targeted genes first, then search which cluster the genes subjected to. 
+Mode <- 'Manu' # another mode is: 'Manu'
+
+# --- gene panel setting ---
+# *setting for gene searching: Obtain the targeted genes and corresponding gene panel
+
+if (Mode == 'Search'){
+  # method 1: search the gene panel that interested gene or pathway assigned to 
+  interested.gene <- 'nitrate'
+  interested.pathway <- 'Phototransduction'
+  SearchGene <- TRUE
+  SearchPathway <- FALSE
+  # option: level3_pathway_name, ko_des, SwissProt_Description
+  Cluster <- Search_GePa(var_list, SearchGene=TRUE, SearchPathway=FALSE)
+} else if (Mode == 'Manu'){
+  # method 2: manually set interested gene panel (cluster)
+  Cluster <- 'Cluster 1' # HGP
+}
+
+# === obtain correlation matrix: occor.r ===
+occor.r <- ObtainCorNet(dataset, SubDataset, Cluster, group, group_sample.data, gene_name=FALSE, thre.p = 0.05, thre.r = 0.8)
+  
+library(igraph)
+# parameter setting*
+ExploreDegree = FALSE # whether or not visualize the exploratory analysis on nodes degree
+ExploreNeibor = FALSE # whether or not visualize the exploratory analysis on nodes neiboring information 
+adjacency_weight <- occor.r
+igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_weight), mode = 'undirected', weighted = TRUE, diag = FALSE)
+
+# === obtain graph: graph_list ===
+graph_list <- ObtainGraph(dataset, SubDataset, Cluster, group, group_sample.data, igraph, gene_name=TRUE, thre.p = 0.05, thre.r = 0.8)
+
+# --- obtain landmark genes ----
+landmark.ordered <- obtain_landmark(graph_list, dataset, group, SubDataset,
+                            Cluster, group_sample.data)
+
+landmark.top5 <- landmark.ordered$ko_name[1:5]
+
+print(paste('The top 5 landmark genes of', Cluster, 'is:'))
+print(landmark.top5)
+```
+
+```         
+[1] "The top 5 landmark genes of Cluster 1 is:"
+[1] "pilN"      "pilP"      "E6.4.1.4B" "cysE"      "gspH"
+```
+
+-   As revealed above on the practical engineering projects'
+    denitrification microbiome, the top 5 landmark genes of gene panel 1
+    is: "pilN", "pilP", "E6.4.1.4B", "cysE" and "gspH"

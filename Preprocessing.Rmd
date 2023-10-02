@@ -3,7 +3,7 @@
 ---
 title: "Data Preprocessing"
 author: "Yang Liao"
-date: "2023-09-02"
+date: "2023-10-02"
 output:
   html_document: default
   pdf_document: default
@@ -19,8 +19,12 @@ The following DEMOs are based on different datasets.
 
 ## DEMO1: Optogenetic denitrifier based on metatranscriptomics
 
-### 'D': Discover
+This dataset corresponds to the main case in manuscript, i.e. metatranscriptomics of photo-denitrification microbiota. After preprocessing of all 56,991 non-redundant genes across all samples, we obtained 25,886 valid differentially expressed genes (DEGs).
 
+### 'D': Discover -- Data preprocessing
+
+-   After run the cell once, file will be saved and the next run will not conduct DESeq analysis again. Instead, read the DESeq results from local saved files directly.
+-   TIPS: make sure to set appropriate filtering threshold of expression level or abundance for gene filtering. This depeneds on the number of samples. Generally, 0.1\*N is a good threshold (N is the number of sample.)
 -   The original cell output is as follows:
 
 ```         
@@ -37,7 +41,7 @@ The following DEMOs are based on different datasets.
 [1] "The total number of unique DEGs for tsne analysis of Yellow_vs_Dark dataset is: 4366"
 ```
 
-```{r DEMO1}
+```{r}
 rm(list=ls()) 
 
 # load function
@@ -88,28 +92,466 @@ ggplot(graph_data,aes(tSNE1,tSNE2, colour = as.factor(tmhmm))) +  # ,colour = de
   mytheme1
 ```
 
-### 'M': Model
+### 'M': Model - Geometric deep learning through DGL algorithm
 
 In this part, we utilized geomteric deep learning to unsupervised learned the genetic co-expression, i.e. obtaining gene panels.
 
-```{python}
-from scr.config import dataset_name, group, config
-dataset_name = 'LY_15samples_metagenomics'
-group = 'Yellow_vs_Dark'
-config['threshold'] = 0.4
-config['epoch'] = 20000
+The obtained gene panels' labels are stored at 'generated_data/types.txt'
+
+```{bash}
+cd ./scr 
+source /Users/yangliao/opt/anaconda3/bin/activate pyg # directory to your local activate path. You can figure out your path through command 'which activate' in your terminal; pyg: the name of your virtual environment
+
+#!/bin/sh
+dataset_name='LY_9samples_metatranscriptomics' # dataset 
+group='Yellow_vs_Dark' # subdataset 
+threshold=0.4 # threshold for edge construction 
+epoch=20000 # trainnning epoches
+
+## To run graph learning, un-annotated the following commands: 
+# python3 -c "import main; main.set_config('$dataset_name', '$group', thre=$threshold, num_epoch=$epoch); print(main.config['data_path']); main.main()"
+
 ```
+
+-   The output of above cell is as follow
+
+```         
+../data/LY_9samples_metatranscriptomics/inputdata/dgidata_Yellow_vs_Dark.csv
+feature shape:  (6, 4366)
+cuda is not available
+Threshold: 0.4 
+ Links number: 120788 
+ Average Links: 27.665597801191023
+Adj: (4366, 4366) Edges: 120788
+X: (4366, 6)
+Adj: (4366, 4366) Edges: 120788
+X: (4366, 6)
+-----------Deep Graph Infomax-------------
+Epoch: 100, Loss: 1.3740
+Epoch: 200, Loss: 1.3624
+Epoch: 300, Loss: 1.3524
+Epoch: 400, Loss: 1.3429
+Epoch: 500, Loss: 1.3308
+Epoch: 600, Loss: 1.3212
+Epoch: 700, Loss: 1.3067
+Epoch: 800, Loss: 1.2914
+Epoch: 900, Loss: 1.2738
+Epoch: 1000, Loss: 1.2576
+Epoch: 1100, Loss: 1.2347
+Epoch: 1200, Loss: 1.2201
+Epoch: 1300, Loss: 1.1943
+Epoch: 1400, Loss: 1.1716
+Epoch: 1500, Loss: 1.1600
+Epoch: 1600, Loss: 1.1363
+Epoch: 1700, Loss: 1.1074
+Epoch: 1800, Loss: 1.0961
+Epoch: 1900, Loss: 1.0590
+Epoch: 2000, Loss: 1.0428
+Epoch: 2100, Loss: 1.0312
+Epoch: 2200, Loss: 0.9945
+Epoch: 2300, Loss: 0.9611
+Epoch: 2400, Loss: 0.9420
+Epoch: 2500, Loss: 0.9062
+Epoch: 2600, Loss: 0.8841
+Epoch: 2700, Loss: 0.8591
+Epoch: 2800, Loss: 0.8617
+Epoch: 2900, Loss: 0.8160
+Epoch: 3000, Loss: 0.8136
+Epoch: 3100, Loss: 0.7851
+Epoch: 3200, Loss: 0.7635
+Epoch: 3300, Loss: 0.7412
+Epoch: 3400, Loss: 0.7442
+Epoch: 3500, Loss: 0.7015
+Epoch: 3600, Loss: 0.6864
+Epoch: 3700, Loss: 0.6676
+Epoch: 3800, Loss: 0.6705
+Epoch: 3900, Loss: 0.6456
+Epoch: 4000, Loss: 0.6152
+Epoch: 4100, Loss: 0.6124
+Epoch: 4200, Loss: 0.5935
+Epoch: 4300, Loss: 0.6069
+Epoch: 4400, Loss: 0.5489
+Epoch: 4500, Loss: 0.5659
+Epoch: 4600, Loss: 0.5373
+Epoch: 4700, Loss: 0.5481
+Epoch: 4800, Loss: 0.5533
+Epoch: 4900, Loss: 0.5120
+Epoch: 5000, Loss: 0.4894
+Epoch: 5100, Loss: 0.4968
+Epoch: 5200, Loss: 0.4605
+Epoch: 5300, Loss: 0.4762
+Epoch: 5400, Loss: 0.4904
+Epoch: 5500, Loss: 0.4601
+Epoch: 5600, Loss: 0.4143
+Epoch: 5700, Loss: 0.4042
+Epoch: 5800, Loss: 0.4367
+Epoch: 5900, Loss: 0.4085
+Epoch: 6000, Loss: 0.4195
+Epoch: 6100, Loss: 0.3963
+Epoch: 6200, Loss: 0.3600
+Epoch: 6300, Loss: 0.3902
+Epoch: 6400, Loss: 0.3678
+Epoch: 6500, Loss: 0.3862
+Epoch: 6600, Loss: 0.3768
+Epoch: 6700, Loss: 0.3662
+Epoch: 6800, Loss: 0.3478
+Epoch: 6900, Loss: 0.3377
+Epoch: 7000, Loss: 0.3226
+Epoch: 7100, Loss: 0.3438
+Epoch: 7200, Loss: 0.3092
+Epoch: 7300, Loss: 0.3024
+Epoch: 7400, Loss: 0.3136
+Epoch: 7500, Loss: 0.2969
+Epoch: 7600, Loss: 0.3063
+Epoch: 7700, Loss: 0.3253
+Epoch: 7800, Loss: 0.2950
+Epoch: 7900, Loss: 0.3053
+Epoch: 8000, Loss: 0.3180
+Epoch: 8100, Loss: 0.2683
+Epoch: 8200, Loss: 0.2863
+Epoch: 8300, Loss: 0.2949
+Epoch: 8400, Loss: 0.2615
+Epoch: 8500, Loss: 0.2510
+Epoch: 8600, Loss: 0.2950
+Epoch: 8700, Loss: 0.2628
+Epoch: 8800, Loss: 0.2767
+Epoch: 8900, Loss: 0.2600
+Epoch: 9000, Loss: 0.2378
+Epoch: 9100, Loss: 0.2540
+Epoch: 9200, Loss: 0.2324
+Epoch: 9300, Loss: 0.2312
+Epoch: 9400, Loss: 0.2264
+Epoch: 9500, Loss: 0.2336
+Epoch: 9600, Loss: 0.2056
+Epoch: 9700, Loss: 0.1881
+Epoch: 9800, Loss: 0.2365
+Epoch: 9900, Loss: 0.2022
+Epoch: 10000, Loss: 0.2174
+Epoch: 10100, Loss: 0.2291
+Epoch: 10200, Loss: 0.2285
+Epoch: 10300, Loss: 0.2191
+Epoch: 10400, Loss: 0.2314
+Epoch: 10500, Loss: 0.2056
+Epoch: 10600, Loss: 0.2030
+Epoch: 10700, Loss: 0.2579
+Epoch: 10800, Loss: 0.1740
+Epoch: 10900, Loss: 0.1893
+Epoch: 11000, Loss: 0.1859
+Epoch: 11100, Loss: 0.2140
+Epoch: 11200, Loss: 0.1787
+Epoch: 11300, Loss: 0.2078
+Epoch: 11400, Loss: 0.2035
+Epoch: 11500, Loss: 0.2189
+Epoch: 11600, Loss: 0.1960
+Epoch: 11700, Loss: 0.2005
+Epoch: 11800, Loss: 0.1624
+Epoch: 11900, Loss: 0.1805
+Epoch: 12000, Loss: 0.2185
+Epoch: 12100, Loss: 0.1832
+Epoch: 12200, Loss: 0.2157
+Epoch: 12300, Loss: 0.1595
+Epoch: 12400, Loss: 0.1507
+Epoch: 12500, Loss: 0.1800
+Epoch: 12600, Loss: 0.1856
+Epoch: 12700, Loss: 0.1630
+Epoch: 12800, Loss: 0.1661
+Epoch: 12900, Loss: 0.1759
+Epoch: 13000, Loss: 0.2176
+Epoch: 13100, Loss: 0.1659
+Epoch: 13200, Loss: 0.1661
+Epoch: 13300, Loss: 0.1938
+Epoch: 13400, Loss: 0.1717
+Epoch: 13500, Loss: 0.1687
+Epoch: 13600, Loss: 0.1472
+Epoch: 13700, Loss: 0.2006
+Epoch: 13800, Loss: 0.1628
+Epoch: 13900, Loss: 0.1472
+Epoch: 14000, Loss: 0.1773
+Epoch: 14100, Loss: 0.1287
+Epoch: 14200, Loss: 0.1716
+Epoch: 14300, Loss: 0.2194
+Epoch: 14400, Loss: 0.1793
+Epoch: 14500, Loss: 0.1452
+Epoch: 14600, Loss: 0.1313
+Epoch: 14700, Loss: 0.1943
+Epoch: 14800, Loss: 0.1503
+Epoch: 14900, Loss: 0.1642
+Epoch: 15000, Loss: 0.1476
+Epoch: 15100, Loss: 0.1426
+Epoch: 15200, Loss: 0.1532
+Epoch: 15300, Loss: 0.1530
+Epoch: 15400, Loss: 0.1402
+Epoch: 15500, Loss: 0.1900
+Epoch: 15600, Loss: 0.1534
+Epoch: 15700, Loss: 0.1401
+Epoch: 15800, Loss: 0.1666
+Epoch: 15900, Loss: 0.1569
+Epoch: 16000, Loss: 0.1374
+Epoch: 16100, Loss: 0.1777
+Epoch: 16200, Loss: 0.1427
+Epoch: 16300, Loss: 0.1573
+Epoch: 16400, Loss: 0.1844
+Epoch: 16500, Loss: 0.1406
+Epoch: 16600, Loss: 0.1649
+Epoch: 16700, Loss: 0.1528
+Epoch: 16800, Loss: 0.1279
+Epoch: 16900, Loss: 0.1688
+Epoch: 17000, Loss: 0.1596
+Epoch: 17100, Loss: 0.1576
+Epoch: 17200, Loss: 0.1478
+Epoch: 17300, Loss: 0.1337
+Epoch: 17400, Loss: 0.1512
+Epoch: 17500, Loss: 0.1652
+Epoch: 17600, Loss: 0.1366
+Epoch: 17700, Loss: 0.1506
+Epoch: 17800, Loss: 0.1575
+Epoch: 17900, Loss: 0.1456
+Epoch: 18000, Loss: 0.1606
+Epoch: 18100, Loss: 0.1311
+Epoch: 18200, Loss: 0.1636
+Epoch: 18300, Loss: 0.1707
+Epoch: 18400, Loss: 0.1784
+Epoch: 18500, Loss: 0.1366
+Epoch: 18600, Loss: 0.1296
+Epoch: 18700, Loss: 0.1685
+Epoch: 18800, Loss: 0.1431
+Epoch: 18900, Loss: 0.1335
+Epoch: 19000, Loss: 0.1544
+Epoch: 19100, Loss: 0.1308
+Epoch: 19200, Loss: 0.1309
+Epoch: 19300, Loss: 0.1382
+Epoch: 19400, Loss: 0.1576
+Epoch: 19500, Loss: 0.1457
+Epoch: 19600, Loss: 0.1465
+Epoch: 19700, Loss: 0.1467
+Epoch: 19800, Loss: 0.1932
+Epoch: 19900, Loss: 0.1394
+Epoch: 20000, Loss: 0.1440
+Training time in seconds:  8688
+-----------Clustering-------------
+Shape of data to PCA: (4366, 256)
+Shape of data output by PCA: (4366, 30)
+PCA recover: 0.9999489
+Shape of data to cluster: (4366, 30)
+SCI score (Clustering quality) is: 0.6379427
+```
+
+## DEMO2: Optogenetic anaerobic CO2 fixation for denitrification based on metatranscriptomics
+
+### 'D': Discover
+
+-   The original output is as follows:
+
+```         
+[1] "The total number of DEGs (not unique): 363440"
+[1] "The total number of unique DEGs (not unique): 122309"
+[1] "The total number of deseq filtered DEGs: 192778"
+[1] "The total number of unique deseq filtered DEGs: 89473"
+[1] "The number of total genes (unique): 204424"
+[1] "The number of total DEGs after filtering : 118143"
+
+  Blue_vs_White    Red_vs_White Yellow_vs_White 
+          39496           37632           41015 
+```
+
+```         
+[1] "The total number of DEGs (not unique): 363440"
+[1] "The total number of unique DEGs (not unique): 122309"
+[1] "The total number of deseq filtered DEGs: 208061"
+[1] "The total number of unique deseq filtered DEGs: 95944"
+[1] "The number of total genes (unique): 204424"
+[1] "The number of total DEGs after filtering : 66857"
+
+  Blue_vs_White    Red_vs_White Yellow_vs_White 
+          21744           21741           23372 
+[1] "The total number of unique DEGs for tsne analysis of Blue_vs_White dataset is: 21744"
+[1] "The total number of unique DEGs for tsne analysis of Red_vs_White dataset is: 21741"
+[1] "The total number of unique DEGs for tsne analysis of Yellow_vs_White dataset is: 23372"
+```
+
+```{r}
+rm(list=ls()) 
+
+# load function
+source('./scr/R/PreprocessingFunctions.R')
+
+# === import data path ===
+# --- DESeq ---
+dataset <- 'ZJ_12samples_metatranscriptomics'
+rawdata_path <- paste("./data/", dataset, "/rawdata/reads_number.txt", sep = '')
+group_path <- paste("./data/", dataset, "/inputdata/group.csv", sep = '')
+output_path <- paste("./data/", dataset, "/inputdata/", sep = '') # input data for modeling in python
+output_path.rawDEGs <- paste(output_path, 'DEGs_raw.csv', sep = '')
+
+# --- filtered DEGs ---
+rpkm_path <- paste("./data/", dataset, "/rawdata/RPKM.txt", sep = '')
+DEGs.filtered.path <- paste("./data/", dataset, "/inputdata/DEGs_filtered.csv", sep = '')
+
+## subcellular annotation
+anno.signal <- paste("./data/", dataset, "/rawdata/Signal.csv", sep = '')
+anno.tmhmm <- paste("./data/", dataset, "/rawdata/tmhmm.csv", sep = '')
+
+# === conduct analysis ===
+# obtain DEGs (padj for metatranscriptomics)
+DEGs.filtered <- obtain_DEGs(rawdata_path, group_path, 
+                        rpkm_path, thre = 6,
+                        output_path.rawDEGs, DEGs.filtered.path)
+
+# obtain graph data 
+# umap can also be adopted to allieviate the duplication problem arounsed by tsne
+graph_data_list <- reduce_df(DEGs.filtered, dataset,
+                             anno.info.1=anno.signal,
+                             anno.info.2=anno.tmhmm,
+                             group_path, perplex=50,
+                             Reduction= 'umap',
+                             normalization='stand')
+```
+
+```         
+```
+
+### 'M': Model - Geometric deep learning through DGL algorithm
 
 ```{bash}
 cd ./scr
 source /Users/yangliao/opt/anaconda3/bin/activate pyg
 # conda activate pyg
-python3 main.py
+
+#!/bin/sh
+dataset_name='ZJ_12samples_metatranscriptomics' # dataset 
+group='Blue_vs_White' # subdataset 
+threshold=0.4 # threshold for edge construction 
+epoch=20000 # trainnning epoches
+
+# # To run graph learning, un-annotated the following commands:
+# python3 -c "import main; main.set_config('$dataset_name', '$group', thre=$threshold, num_epoch=$epoch); print(main.config['data_path']); main.main()"
 ```
 
-## DEMO2: Optogenetic anaerobic CO2 fixation for denitrification based on metatranscriptomics
+```         
+feature shape:  (8, 21744)
+cuda is available
+Threshold: 0.04 
+ Links number: 454132 
+ Average Links: 20.885393671817514
+Adj: (21744, 21744) Edges: 454132
+X: (21744, 8)
+Adj: (21744, 21744) Edges: 454132
+X: (21744, 8)
+-----------Deep Graph Infomax-------------
+/root/miniconda3/envs/dgi/lib/python3.9/site-packages/torch_geometric/deprecation.py:22: UserWarning: 'data.DataLoader' is deprecated, use 'loader.DataLoader' instead
+  warnings.warn(out)
+Epoch: 100, Loss: 1.3474
+Epoch: 200, Loss: 1.2549
+Epoch: 300, Loss: 1.1814
+Epoch: 400, Loss: 1.1257
+Epoch: 500, Loss: 1.0777
+Epoch: 600, Loss: 1.0321
+Epoch: 700, Loss: 0.9949
+Epoch: 800, Loss: 0.9588
+Epoch: 900, Loss: 0.9265
+Epoch: 1000, Loss: 0.9039
+Epoch: 1100, Loss: 0.8750
+Epoch: 1200, Loss: 0.8385
+Epoch: 1300, Loss: 0.8148
+Epoch: 1400, Loss: 0.8013
+Epoch: 1500, Loss: 0.7777
+Epoch: 1600, Loss: 0.7447
+Epoch: 1700, Loss: 0.7378
+Epoch: 1800, Loss: 0.7185
+Epoch: 1900, Loss: 0.6987
+Epoch: 2000, Loss: 0.6769
+Epoch: 2100, Loss: 0.6715
+Epoch: 2200, Loss: 0.6653
+Epoch: 2300, Loss: 0.6533
+Epoch: 2400, Loss: 0.6400
+Epoch: 2500, Loss: 0.6305
+Epoch: 2600, Loss: 0.6207
+Epoch: 2700, Loss: 0.6102
+Epoch: 2800, Loss: 0.6091
+Epoch: 2900, Loss: 0.5957
+Epoch: 3000, Loss: 0.5862
+Epoch: 3100, Loss: 0.5783
+Epoch: 3200, Loss: 0.5722
+Epoch: 3300, Loss: 0.5624
+Epoch: 3400, Loss: 0.5572
+Epoch: 3500, Loss: 0.5548
+Epoch: 3600, Loss: 0.5488
+Epoch: 3700, Loss: 0.5459
+Epoch: 3800, Loss: 0.5274
+Epoch: 3900, Loss: 0.5240
+Epoch: 4000, Loss: 0.5182
+Epoch: 4100, Loss: 0.5195
+Epoch: 4200, Loss: 0.5059
+Epoch: 4300, Loss: 0.5003
+Epoch: 4400, Loss: 0.4818
+Epoch: 4500, Loss: 0.4809
+Epoch: 4600, Loss: 0.4710
+Epoch: 4700, Loss: 0.4577
+Epoch: 4800, Loss: 0.4541
+Epoch: 4900, Loss: 0.4605
+Epoch: 5000, Loss: 0.4406
+Epoch: 5100, Loss: 0.4359
+Epoch: 5200, Loss: 0.4294
+Epoch: 5300, Loss: 0.4267
+Epoch: 5400, Loss: 0.4200
+Epoch: 5500, Loss: 0.4133
+Epoch: 5600, Loss: 0.4053
+Epoch: 5700, Loss: 0.3989
+Epoch: 5800, Loss: 0.3946
+Epoch: 5900, Loss: 0.3916
+Epoch: 6000, Loss: 0.3930
+Epoch: 6100, Loss: 0.3818
+Epoch: 6200, Loss: 0.3850
+Epoch: 6300, Loss: 0.3765
+Epoch: 6400, Loss: 0.3712
+Epoch: 6500, Loss: 0.3682
+Epoch: 6600, Loss: 0.3648
+Epoch: 6700, Loss: 0.3630
+Epoch: 6800, Loss: 0.3637
+Epoch: 6900, Loss: 0.3602
+Epoch: 7000, Loss: 0.3597
+Epoch: 7100, Loss: 0.3430
+Epoch: 7200, Loss: 0.3490
+Epoch: 7300, Loss: 0.3518
+Epoch: 7400, Loss: 0.3487
+Epoch: 7500, Loss: 0.3454
+Epoch: 7600, Loss: 0.3483
+Epoch: 7700, Loss: 0.3400
+Epoch: 7800, Loss: 0.3415
+Epoch: 7900, Loss: 0.3378
+Epoch: 8000, Loss: 0.3319
+Epoch: 8100, Loss: 0.3322
+Epoch: 8200, Loss: 0.3314
+Epoch: 8300, Loss: 0.3335
+Epoch: 8400, Loss: 0.3229
+Epoch: 8500, Loss: 0.3236
+Epoch: 8600, Loss: 0.3215
+Epoch: 8700, Loss: 0.3239
+Epoch: 8800, Loss: 0.3208
+Epoch: 8900, Loss: 0.3119
+Epoch: 9000, Loss: 0.3147
+Epoch: 9100, Loss: 0.3145
+Epoch: 9200, Loss: 0.3049
+Epoch: 9300, Loss: 0.3110
+Epoch: 9400, Loss: 0.3077
+Epoch: 9500, Loss: 0.3038
+Epoch: 9600, Loss: 0.3011
+Epoch: 9700, Loss: 0.2953
+Epoch: 9800, Loss: 0.2930
+Epoch: 9900, Loss: 0.2873
+Epoch: 10000, Loss: 0.2901
+Training time in seconds:  674
+-----------Clustering-------------
+Shape of data to PCA: (21744, 256)
+Shape of data output by PCA: (21744, 30)
+PCA recover: 0.99897283
+Shape of data to cluster: (21744, 30)
+SCI score (Clustering quality) is: 0.35338965
+```
 
 ## DEMO3: Optogenetic denitrifier based on metagenomics
+
+### 'D': Discover
 
 -   The original cell output is as follows:
 
@@ -135,7 +577,7 @@ source('./scr/R/PreprocessingFunctions.R')
 
 # === import data path ===
 # --- DESeq ---
-dataset <- 'LY_15samples_metagenomics'
+dataset <- 'LY_15samples_metagenomics' 
 rawdata_path <- paste("./data/", dataset, "/rawdata/reads_number.txt", sep = '')
 group_path <- paste("./data/", dataset, "/inputdata/group.csv", sep = '')
 output_path <- paste("./data/", dataset, "/inputdata/", sep = '') # input data for modeling in python
@@ -160,4 +602,773 @@ graph_data_list <- get_tsne_df(DEGs.filtered, dataset,
                                group_path, perplex = 10)
 ```
 
-## DEMO4: Optogenetic anaerobic CO2 fixation for denitrification based on metagenomics
+### 'M': Model - Geometric deep learning through DGL algorithm
+
+```{bash}
+cd ./scr
+source /Users/yangliao/opt/anaconda3/bin/activate pyg
+# conda activate pyg
+
+#!/bin/sh
+dataset_name='LY_15samples_metagenomics' # dataset 
+group='Blue_vs_Dark' # subdataset 
+threshold=0.4 # threshold for edge construction 
+epoch=20000 # trainnning epoches
+
+# # To run graph learning, un-annotated the following commands:
+# python3 -c "import main; main.set_config('$dataset_name', '$group', thre=$threshold, num_epoch=$epoch); print(main.config['data_path']); main.main()"
+```
+
+-   The output of above cell is as follow (group='Yellow_vs_Dark'):
+
+```         
+feature shape:  (5, 88)
+cuda is not available
+Threshold: 2 
+ Links number: 1040 
+ Average Links: 11.818181818181818
+Adj: (88, 88) Edges: 1040
+X: (88, 5)
+Adj: (88, 88) Edges: 1040
+X: (88, 5)
+-----------Deep Graph Infomax-------------
+Epoch: 100, Loss: 1.3852
+Epoch: 200, Loss: 1.3847
+Epoch: 300, Loss: 1.3836
+Epoch: 400, Loss: 1.3841
+Epoch: 500, Loss: 1.3827
+Epoch: 600, Loss: 1.3822
+Epoch: 700, Loss: 1.3811
+Epoch: 800, Loss: 1.3800
+Epoch: 900, Loss: 1.3803
+Epoch: 1000, Loss: 1.3780
+Epoch: 1100, Loss: 1.3787
+Epoch: 1200, Loss: 1.3762
+Epoch: 1300, Loss: 1.3749
+Epoch: 1400, Loss: 1.3745
+Epoch: 1500, Loss: 1.3733
+Epoch: 1600, Loss: 1.3725
+Epoch: 1700, Loss: 1.3684
+Epoch: 1800, Loss: 1.3665
+Epoch: 1900, Loss: 1.3649
+Epoch: 2000, Loss: 1.3639
+Epoch: 2100, Loss: 1.3660
+Epoch: 2200, Loss: 1.3590
+Epoch: 2300, Loss: 1.3578
+Epoch: 2400, Loss: 1.3616
+Epoch: 2500, Loss: 1.3544
+Epoch: 2600, Loss: 1.3486
+Epoch: 2700, Loss: 1.3458
+Epoch: 2800, Loss: 1.3433
+Epoch: 2900, Loss: 1.3446
+Epoch: 3000, Loss: 1.3348
+Epoch: 3100, Loss: 1.3360
+Epoch: 3200, Loss: 1.3301
+Epoch: 3300, Loss: 1.3450
+Epoch: 3400, Loss: 1.3236
+Epoch: 3500, Loss: 1.3325
+Epoch: 3600, Loss: 1.3266
+Epoch: 3700, Loss: 1.3331
+Epoch: 3800, Loss: 1.3063
+Epoch: 3900, Loss: 1.3272
+Epoch: 4000, Loss: 1.3088
+Epoch: 4100, Loss: 1.3064
+Epoch: 4200, Loss: 1.2953
+Epoch: 4300, Loss: 1.3049
+Epoch: 4400, Loss: 1.2864
+Epoch: 4500, Loss: 1.2955
+Epoch: 4600, Loss: 1.2808
+Epoch: 4700, Loss: 1.2587
+Epoch: 4800, Loss: 1.2590
+Epoch: 4900, Loss: 1.2705
+Epoch: 5000, Loss: 1.2640
+Epoch: 5100, Loss: 1.2447
+Epoch: 5200, Loss: 1.2139
+Epoch: 5300, Loss: 1.2486
+Epoch: 5400, Loss: 1.2152
+Epoch: 5500, Loss: 1.1768
+Epoch: 5600, Loss: 1.1996
+Epoch: 5700, Loss: 1.1983
+Epoch: 5800, Loss: 1.1775
+Epoch: 5900, Loss: 1.1950
+Epoch: 6000, Loss: 1.1532
+Epoch: 6100, Loss: 1.2682
+Epoch: 6200, Loss: 1.1662
+Epoch: 6300, Loss: 1.2334
+Epoch: 6400, Loss: 1.1632
+Epoch: 6500, Loss: 1.1901
+Epoch: 6600, Loss: 1.1214
+Epoch: 6700, Loss: 1.1218
+Epoch: 6800, Loss: 1.0779
+Epoch: 6900, Loss: 1.1540
+Epoch: 7000, Loss: 1.0861
+Epoch: 7100, Loss: 1.1222
+Epoch: 7200, Loss: 1.1220
+Epoch: 7300, Loss: 1.1070
+Epoch: 7400, Loss: 1.0601
+Epoch: 7500, Loss: 1.0880
+Epoch: 7600, Loss: 1.0137
+Epoch: 7700, Loss: 1.0363
+Epoch: 7800, Loss: 1.0332
+Epoch: 7900, Loss: 0.9975
+Epoch: 8000, Loss: 1.0552
+Epoch: 8100, Loss: 1.0216
+Epoch: 8200, Loss: 0.9815
+Epoch: 8300, Loss: 0.9916
+Epoch: 8400, Loss: 1.0702
+Epoch: 8500, Loss: 0.9005
+Epoch: 8600, Loss: 0.9595
+Epoch: 8700, Loss: 1.0796
+Epoch: 8800, Loss: 1.0925
+Epoch: 8900, Loss: 0.9417
+Epoch: 9000, Loss: 0.9446
+Epoch: 9100, Loss: 0.9806
+Epoch: 9200, Loss: 0.8887
+Epoch: 9300, Loss: 0.8800
+Epoch: 9400, Loss: 0.8590
+Epoch: 9500, Loss: 0.8131
+Epoch: 9600, Loss: 0.8293
+Epoch: 9700, Loss: 0.8473
+Epoch: 9800, Loss: 0.8797
+Epoch: 9900, Loss: 0.9312
+Epoch: 10000, Loss: 1.0732
+Epoch: 10100, Loss: 0.9778
+Epoch: 10200, Loss: 0.8323
+Epoch: 10300, Loss: 0.8082
+Epoch: 10400, Loss: 0.9840
+Epoch: 10500, Loss: 0.8607
+Epoch: 10600, Loss: 0.7973
+Epoch: 10700, Loss: 0.7813
+Epoch: 10800, Loss: 0.8401
+Epoch: 10900, Loss: 0.7815
+Epoch: 11000, Loss: 0.8054
+Epoch: 11100, Loss: 0.9641
+Epoch: 11200, Loss: 0.7303
+Epoch: 11300, Loss: 0.7934
+Epoch: 11400, Loss: 0.8540
+Epoch: 11500, Loss: 0.7509
+Epoch: 11600, Loss: 0.7682
+Epoch: 11700, Loss: 0.7576
+Epoch: 11800, Loss: 0.7048
+Epoch: 11900, Loss: 0.8668
+Epoch: 12000, Loss: 0.7693
+Epoch: 12100, Loss: 0.7073
+Epoch: 12200, Loss: 0.8179
+Epoch: 12300, Loss: 0.9550
+Epoch: 12400, Loss: 0.6851
+Epoch: 12500, Loss: 0.7521
+Epoch: 12600, Loss: 0.8841
+Epoch: 12700, Loss: 0.8229
+Epoch: 12800, Loss: 0.7914
+Epoch: 12900, Loss: 0.7035
+Epoch: 13000, Loss: 0.7509
+Epoch: 13100, Loss: 0.7803
+Epoch: 13200, Loss: 0.7113
+Epoch: 13300, Loss: 1.0522
+Epoch: 13400, Loss: 0.7617
+Epoch: 13500, Loss: 0.8701
+Epoch: 13600, Loss: 0.8033
+Epoch: 13700, Loss: 0.7391
+Epoch: 13800, Loss: 0.7266
+Epoch: 13900, Loss: 0.8056
+Epoch: 14000, Loss: 0.7582
+Epoch: 14100, Loss: 0.6809
+Epoch: 14200, Loss: 0.9835
+Epoch: 14300, Loss: 0.7368
+Epoch: 14400, Loss: 0.7179
+Epoch: 14500, Loss: 0.7765
+Epoch: 14600, Loss: 0.8020
+Epoch: 14700, Loss: 0.6952
+Epoch: 14800, Loss: 0.7666
+Epoch: 14900, Loss: 0.8097
+Epoch: 15000, Loss: 0.7372
+Epoch: 15100, Loss: 0.6846
+Epoch: 15200, Loss: 0.6439
+Epoch: 15300, Loss: 0.7207
+Epoch: 15400, Loss: 0.7973
+Epoch: 15500, Loss: 1.0249
+Epoch: 15600, Loss: 0.7075
+Epoch: 15700, Loss: 0.7100
+Epoch: 15800, Loss: 0.7692
+Epoch: 15900, Loss: 0.6644
+Epoch: 16000, Loss: 0.7582
+Epoch: 16100, Loss: 0.7409
+Epoch: 16200, Loss: 0.7450
+Epoch: 16300, Loss: 0.7627
+Epoch: 16400, Loss: 0.7355
+Epoch: 16500, Loss: 0.7345
+Epoch: 16600, Loss: 0.6891
+Epoch: 16700, Loss: 0.7320
+Epoch: 16800, Loss: 0.6756
+Epoch: 16900, Loss: 0.6448
+Epoch: 17000, Loss: 0.6834
+Epoch: 17100, Loss: 0.6639
+Epoch: 17200, Loss: 1.0297
+Epoch: 17300, Loss: 0.6753
+Epoch: 17400, Loss: 0.7298
+Epoch: 17500, Loss: 0.6341
+Epoch: 17600, Loss: 0.6401
+Epoch: 17700, Loss: 1.0864
+Epoch: 17800, Loss: 0.6281
+Epoch: 17900, Loss: 0.7538
+Epoch: 18000, Loss: 0.7685
+Epoch: 18100, Loss: 0.6593
+Epoch: 18200, Loss: 0.6760
+Epoch: 18300, Loss: 0.6992
+Epoch: 18400, Loss: 0.9594
+Epoch: 18500, Loss: 0.8131
+Epoch: 18600, Loss: 0.8182
+Epoch: 18700, Loss: 0.6376
+Epoch: 18800, Loss: 0.7278
+Epoch: 18900, Loss: 0.6237
+Epoch: 19000, Loss: 0.6124
+Epoch: 19100, Loss: 0.8263
+Epoch: 19200, Loss: 0.8195
+Epoch: 19300, Loss: 0.5992
+Epoch: 19400, Loss: 0.6904
+Epoch: 19500, Loss: 0.8099
+Epoch: 19600, Loss: 0.6155
+Epoch: 19700, Loss: 0.7247
+Epoch: 19800, Loss: 0.6862
+Epoch: 19900, Loss: 0.6549
+Epoch: 20000, Loss: 0.6932
+Training time in seconds:  216
+-----------Clustering-------------
+Shape of data to PCA: (88, 256)
+Shape of data output by PCA: (88, 30)
+PCA recover: 0.9999998
+Shape of data to cluster: (88, 30)
+SCI score (Clustering quality) is: 0.5850728
+```
+
+-   The output of above cell is as follow(group='Blue_vs_Dark':
+
+```         
+../data/LY_15samples_metagenomics/inputdata/dgidata_Blue_vs_Dark.csv
+feature shape:  (5, 88)
+cuda is not available
+Threshold: 0.4 
+ Links number: 276 
+ Average Links: 3.1363636363636362
+Adj: (88, 88) Edges: 276
+X: (88, 5)
+Adj: (88, 88) Edges: 276
+X: (88, 5)
+-----------Deep Graph Infomax-------------
+Epoch: 100, Loss: 1.3858
+Epoch: 200, Loss: 1.3845
+Epoch: 300, Loss: 1.3836
+Epoch: 400, Loss: 1.3845
+Epoch: 500, Loss: 1.3834
+Epoch: 600, Loss: 1.3825
+Epoch: 700, Loss: 1.3813
+Epoch: 800, Loss: 1.3807
+Epoch: 900, Loss: 1.3820
+Epoch: 1000, Loss: 1.3820
+Epoch: 1100, Loss: 1.3796
+Epoch: 1200, Loss: 1.3803
+Epoch: 1300, Loss: 1.3795
+Epoch: 1400, Loss: 1.3795
+Epoch: 1500, Loss: 1.3780
+Epoch: 1600, Loss: 1.3771
+Epoch: 1700, Loss: 1.3760
+Epoch: 1800, Loss: 1.3740
+Epoch: 1900, Loss: 1.3754
+Epoch: 2000, Loss: 1.3745
+Epoch: 2100, Loss: 1.3752
+Epoch: 2200, Loss: 1.3722
+Epoch: 2300, Loss: 1.3706
+Epoch: 2400, Loss: 1.3706
+Epoch: 2500, Loss: 1.3718
+Epoch: 2600, Loss: 1.3700
+Epoch: 2700, Loss: 1.3704
+Epoch: 2800, Loss: 1.3665
+Epoch: 2900, Loss: 1.3683
+Epoch: 3000, Loss: 1.3711
+Epoch: 3100, Loss: 1.3702
+Epoch: 3200, Loss: 1.3687
+Epoch: 3300, Loss: 1.3588
+Epoch: 3400, Loss: 1.3581
+Epoch: 3500, Loss: 1.3692
+Epoch: 3600, Loss: 1.3510
+Epoch: 3700, Loss: 1.3654
+Epoch: 3800, Loss: 1.3526
+Epoch: 3900, Loss: 1.3631
+Epoch: 4000, Loss: 1.3558
+Epoch: 4100, Loss: 1.3508
+Epoch: 4200, Loss: 1.3500
+Epoch: 4300, Loss: 1.3584
+Epoch: 4400, Loss: 1.3492
+Epoch: 4500, Loss: 1.3454
+Epoch: 4600, Loss: 1.3469
+Epoch: 4700, Loss: 1.3476
+Epoch: 4800, Loss: 1.3386
+Epoch: 4900, Loss: 1.3367
+Epoch: 5000, Loss: 1.3301
+Epoch: 5100, Loss: 1.3500
+Epoch: 5200, Loss: 1.3322
+Epoch: 5300, Loss: 1.3441
+Epoch: 5400, Loss: 1.3126
+Epoch: 5500, Loss: 1.3391
+Epoch: 5600, Loss: 1.3130
+Epoch: 5700, Loss: 1.3136
+Epoch: 5800, Loss: 1.3307
+Epoch: 5900, Loss: 1.3195
+Epoch: 6000, Loss: 1.3228
+Epoch: 6100, Loss: 1.3346
+Epoch: 6200, Loss: 1.3285
+Epoch: 6300, Loss: 1.3070
+Epoch: 6400, Loss: 1.3239
+Epoch: 6500, Loss: 1.3026
+Epoch: 6600, Loss: 1.3195
+Epoch: 6700, Loss: 1.3458
+Epoch: 6800, Loss: 1.3062
+Epoch: 6900, Loss: 1.3207
+Epoch: 7000, Loss: 1.3353
+Epoch: 7100, Loss: 1.3172
+Epoch: 7200, Loss: 1.3385
+Epoch: 7300, Loss: 1.3411
+Epoch: 7400, Loss: 1.3063
+Epoch: 7500, Loss: 1.2792
+Epoch: 7600, Loss: 1.3300
+Epoch: 7700, Loss: 1.2961
+Epoch: 7800, Loss: 1.2842
+Epoch: 7900, Loss: 1.2712
+Epoch: 8000, Loss: 1.3400
+Epoch: 8100, Loss: 1.2962
+Epoch: 8200, Loss: 1.2852
+Epoch: 8300, Loss: 1.2815
+Epoch: 8400, Loss: 1.2915
+Epoch: 8500, Loss: 1.2758
+Epoch: 8600, Loss: 1.2940
+Epoch: 8700, Loss: 1.3013
+Epoch: 8800, Loss: 1.2481
+Epoch: 8900, Loss: 1.2742
+Epoch: 9000, Loss: 1.2925
+Epoch: 9100, Loss: 1.3005
+Epoch: 9200, Loss: 1.2725
+Epoch: 9300, Loss: 1.2465
+Epoch: 9400, Loss: 1.2485
+Epoch: 9500, Loss: 1.2468
+Epoch: 9600, Loss: 1.2883
+Epoch: 9700, Loss: 1.2785
+Epoch: 9800, Loss: 1.2463
+Epoch: 9900, Loss: 1.2559
+Epoch: 10000, Loss: 1.2582
+Epoch: 10100, Loss: 1.2881
+Epoch: 10200, Loss: 1.2559
+Epoch: 10300, Loss: 1.2536
+Epoch: 10400, Loss: 1.2168
+Epoch: 10500, Loss: 1.2827
+Epoch: 10600, Loss: 1.3091
+Epoch: 10700, Loss: 1.2432
+Epoch: 10800, Loss: 1.2988
+Epoch: 10900, Loss: 1.2846
+Epoch: 11000, Loss: 1.2243
+Epoch: 11100, Loss: 1.2490
+Epoch: 11200, Loss: 1.2422
+Epoch: 11300, Loss: 1.2346
+Epoch: 11400, Loss: 1.2655
+Epoch: 11500, Loss: 1.2407
+Epoch: 11600, Loss: 1.2277
+Epoch: 11700, Loss: 1.2015
+Epoch: 11800, Loss: 1.2527
+Epoch: 11900, Loss: 1.2583
+Epoch: 12000, Loss: 1.2060
+Epoch: 12100, Loss: 1.2675
+Epoch: 12200, Loss: 1.2562
+Epoch: 12300, Loss: 1.2777
+Epoch: 12400, Loss: 1.2252
+Epoch: 12500, Loss: 1.2327
+Epoch: 12600, Loss: 1.2405
+Epoch: 12700, Loss: 1.1854
+Epoch: 12800, Loss: 1.2222
+Epoch: 12900, Loss: 1.2559
+Epoch: 13000, Loss: 1.2618
+Epoch: 13100, Loss: 1.2641
+Epoch: 13200, Loss: 1.2471
+Epoch: 13300, Loss: 1.2049
+Epoch: 13400, Loss: 1.2131
+Epoch: 13500, Loss: 1.2429
+Epoch: 13600, Loss: 1.2310
+Epoch: 13700, Loss: 1.2325
+Epoch: 13800, Loss: 1.1933
+Epoch: 13900, Loss: 1.1430
+Epoch: 14000, Loss: 1.2626
+Epoch: 14100, Loss: 1.1966
+Epoch: 14200, Loss: 1.2480
+Epoch: 14300, Loss: 1.1913
+Epoch: 14400, Loss: 1.2269
+Epoch: 14500, Loss: 1.1767
+Epoch: 14600, Loss: 1.1576
+Epoch: 14700, Loss: 1.2584
+Epoch: 14800, Loss: 1.1991
+Epoch: 14900, Loss: 1.1787
+Epoch: 15000, Loss: 1.2020
+Epoch: 15100, Loss: 1.1806
+Epoch: 15200, Loss: 1.2089
+Epoch: 15300, Loss: 1.2503
+Epoch: 15400, Loss: 1.2282
+Epoch: 15500, Loss: 1.1743
+Epoch: 15600, Loss: 1.1754
+Epoch: 15700, Loss: 1.2143
+Epoch: 15800, Loss: 1.2288
+Epoch: 15900, Loss: 1.2139
+Epoch: 16000, Loss: 1.2678
+Epoch: 16100, Loss: 1.2408
+Epoch: 16200, Loss: 1.1607
+Epoch: 16300, Loss: 1.1783
+Epoch: 16400, Loss: 1.1615
+Epoch: 16500, Loss: 1.1472
+Epoch: 16600, Loss: 1.2128
+Epoch: 16700, Loss: 1.1640
+Epoch: 16800, Loss: 1.1699
+Epoch: 16900, Loss: 1.1746
+Epoch: 17000, Loss: 1.1463
+Epoch: 17100, Loss: 1.2274
+Epoch: 17200, Loss: 1.2229
+Epoch: 17300, Loss: 1.2488
+Epoch: 17400, Loss: 1.1528
+Epoch: 17500, Loss: 1.1095
+Epoch: 17600, Loss: 1.2343
+Epoch: 17700, Loss: 1.1734
+Epoch: 17800, Loss: 1.1320
+Epoch: 17900, Loss: 1.1913
+Epoch: 18000, Loss: 1.2030
+Epoch: 18100, Loss: 1.1482
+Epoch: 18200, Loss: 1.1750
+Epoch: 18300, Loss: 1.1906
+Epoch: 18400, Loss: 1.2330
+Epoch: 18500, Loss: 1.2254
+Epoch: 18600, Loss: 1.1158
+Epoch: 18700, Loss: 1.1004
+Epoch: 18800, Loss: 1.2235
+Epoch: 18900, Loss: 1.1184
+Epoch: 19000, Loss: 1.1877
+Epoch: 19100, Loss: 1.2523
+Epoch: 19200, Loss: 1.0928
+Epoch: 19300, Loss: 1.1721
+Epoch: 19400, Loss: 1.1048
+Epoch: 19500, Loss: 1.1109
+Epoch: 19600, Loss: 1.1823
+Epoch: 19700, Loss: 1.0780
+Epoch: 19800, Loss: 1.1772
+Epoch: 19900, Loss: 1.1505
+Epoch: 20000, Loss: 1.1944
+Training time in seconds:  182
+-----------Clustering-------------
+Shape of data to PCA: (88, 256)
+Shape of data output by PCA: (88, 30)
+PCA recover: 0.99995804
+Shape of data to cluster: (88, 30)
+SCI score (Clustering quality) is: 0.36837977
+```
+
+## DEMO4: Practical Engineering Anammox based on metagenomics
+
+### 'D': Discover
+
+```{r}
+rm(list=ls()) 
+source('./scr/R/PreprocessingFunctions.R')
+
+# === import data path ===
+# --- DESeq ---
+dataset <- 'JS_18samples_metagenomics'
+rawdata_path <- paste("./data/", dataset, "/rawdata/reads_number.txt", sep = '')
+group_path <- paste("./data/", dataset, "/inputdata/group.csv", sep = '')
+output_path <- paste("./data/", dataset, "/inputdata/", sep = '') # input data for modeling in python
+output_path.rawDEGs <- paste(output_path, 'DEGs_raw.csv', sep = '')
+
+# --- filtered DEGs ---
+rpkm_path <- paste("./data/", dataset, "/rawdata/RPKM.txt", sep = '')
+DEGs.filtered.path <- paste("./data/", dataset, "/inputdata/DEGs_filtered.csv", sep = '')
+
+# ## subcellular annotation
+# anno.signal <- paste("./data/", dataset, "/rawdata/Signal.csv", sep = '')
+# anno.tmhmm <- paste("./data/", dataset, "/rawdata/tmhmm.csv", sep = '')
+
+# === conduct analysis ===
+# obtain DEGs
+DEGs.filtered <- obtain_DEGs(rawdata_path, group_path, 
+                             rpkm_path, thre = 2, 
+                             output_path.rawDEGs,
+                             DEGs.filtered.path)
+
+# obtain graph data
+graph_data_list <- reduce_df(DEGs.filtered, dataset,
+                    group_path, perplex=100)
+```
+
+```         
+[1] "The total number of DEGs (not unique): 2597465"
+[1] "The total number of unique DEGs (not unique): 1024154"
+[1] "The total number of deseq filtered DEGs: 128509"
+[1] "The total number of unique deseq filtered DEGs: 81884"
+[1] "The number of total genes (unique): 1048575"
+[1] "The number of total DEGs after filtering : 30828"
+
+        Aerobic_vs_Nitritation        Anammox1_vs_Nitritation        Anammox2_vs_Nitritation 
+                          1752                          14889                           9346 
+         Anoxic_vs_Nitritation Denitrification_vs_Nitritation 
+                          2734                           2107 
+
+[1] "The total number of unique DEGs for tsne analysis of Aerobic_vs_Nitritation dataset is: 820"
+[1] "The total number of unique DEGs for tsne analysis of Anammox1_vs_Nitritation dataset is: 7983"
+[1] "The total number of unique DEGs for tsne analysis of Anammox2_vs_Nitritation dataset is: 4012"
+[1] "The total number of unique DEGs for tsne analysis of Anoxic_vs_Nitritation dataset is: 2103"
+[1] "The total number of unique DEGs for tsne analysis of Denitrification_vs_Nitritation dataset is: 1521"
+```
+
+```{r}
+# ========= visualization toolkits =========
+# ---  tsne plot ---
+graph_data <- graph_data_list$Denitrification_vs_Nitritation
+ggplot(graph_data,aes(tSNE1,tSNE2)) +  # ,colour = degs
+  geom_point(alpha = 0.5, size = 1) + 
+  labs(title = '') + 
+  theme_bw() + 
+  scale_colour_manual(values = pale_25) +
+  mytheme1
+```
+
+### 'M': Model - Geometric deep learning through DGL algorithm
+
+```{bash}
+cd ./scr
+source /Users/yangliao/opt/anaconda3/bin/activate pyg
+# conda activate pyg
+
+#!/bin/sh
+dataset_name='JS_18samples_metagenomics' # dataset 
+group='Denitrification_vs_Nitritation' # subdataset 
+threshold=0.2 # threshold for edge construction 
+epoch=20000 # trainnning epoches
+
+# To run graph learning, un-annotated the following commands:
+# python3 -c "import main; main.set_config('$dataset_name', '$group', thre=$threshold, num_epoch=$epoch); print(main.config['data_path']); main.main()"
+```
+
+-   The output is as follow:
+-   perplex=50
+
+```         
+../data/JS_18samples_metagenomics/inputdata/dgidata_Denitrification_vs_Nitritation.csv
+feature shape:  (6, 1521)
+cuda is not available
+Threshold: 0.2 
+ Links number: 34673 
+ Average Links: 22.79618671926364
+Adj: (1521, 1521) Edges: 34673
+X: (1521, 6)
+Adj: (1521, 1521) Edges: 34673
+X: (1521, 6)
+-----------Deep Graph Infomax-------------
+Epoch: 100, Loss: 1.3575
+Epoch: 200, Loss: 1.3132
+Epoch: 300, Loss: 1.2762
+Epoch: 400, Loss: 1.2551
+Epoch: 500, Loss: 1.2447
+Epoch: 600, Loss: 1.2348
+Epoch: 700, Loss: 1.2149
+Epoch: 800, Loss: 1.2011
+Epoch: 900, Loss: 1.1901
+Epoch: 1000, Loss: 1.1849
+Epoch: 1100, Loss: 1.1664
+Epoch: 1200, Loss: 1.1457
+Epoch: 1300, Loss: 1.1265
+Epoch: 1400, Loss: 1.1031
+Epoch: 1500, Loss: 1.0794
+Epoch: 1600, Loss: 1.0689
+Epoch: 1700, Loss: 1.0455
+Epoch: 1800, Loss: 1.0237
+Epoch: 1900, Loss: 0.9931
+Epoch: 2000, Loss: 0.9848
+Epoch: 2100, Loss: 0.9414
+Epoch: 2200, Loss: 0.9278
+Epoch: 2300, Loss: 0.8837
+Epoch: 2400, Loss: 0.8639
+Epoch: 2500, Loss: 0.8409
+Epoch: 2600, Loss: 0.8513
+Epoch: 2700, Loss: 0.7758
+Epoch: 2800, Loss: 0.7793
+Epoch: 2900, Loss: 0.7914
+Epoch: 3000, Loss: 0.7050
+Epoch: 3100, Loss: 0.7104
+Epoch: 3200, Loss: 0.6737
+Epoch: 3300, Loss: 0.6719
+Epoch: 3400, Loss: 0.6464
+Epoch: 3500, Loss: 0.6641
+Epoch: 3600, Loss: 0.6758
+Epoch: 3700, Loss: 0.5641
+Epoch: 3800, Loss: 0.5795
+Epoch: 3900, Loss: 0.5807
+Epoch: 4000, Loss: 0.5045
+Epoch: 4100, Loss: 0.5093
+Epoch: 4200, Loss: 0.5539
+Epoch: 4300, Loss: 0.4655
+Epoch: 4400, Loss: 0.5006
+Epoch: 4500, Loss: 0.5557
+Epoch: 4600, Loss: 0.4323
+Epoch: 4700, Loss: 0.4549
+Epoch: 4800, Loss: 0.4750
+Epoch: 4900, Loss: 0.4424
+Epoch: 5000, Loss: 0.4632
+Epoch: 5100, Loss: 0.4584
+Epoch: 5200, Loss: 0.4821
+Epoch: 5300, Loss: 0.3726
+Epoch: 5400, Loss: 0.4252
+Epoch: 5500, Loss: 0.4100
+Epoch: 5600, Loss: 0.4233
+Epoch: 5700, Loss: 0.3961
+Epoch: 5800, Loss: 0.4642
+Epoch: 5900, Loss: 0.4187
+Epoch: 6000, Loss: 0.4850
+Epoch: 6100, Loss: 0.3898
+Epoch: 6200, Loss: 0.3856
+Epoch: 6300, Loss: 0.3829
+Epoch: 6400, Loss: 0.3681
+Epoch: 6500, Loss: 0.3784
+Epoch: 6600, Loss: 0.3670
+Epoch: 6700, Loss: 0.3688
+Epoch: 6800, Loss: 0.3838
+Epoch: 6900, Loss: 0.4362
+Epoch: 7000, Loss: 0.3303
+Epoch: 7100, Loss: 0.4051
+Epoch: 7200, Loss: 0.3227
+Epoch: 7300, Loss: 0.3035
+Epoch: 7400, Loss: 0.3400
+Epoch: 7500, Loss: 0.3904
+Epoch: 7600, Loss: 0.3690
+Epoch: 7700, Loss: 0.3876
+Epoch: 7800, Loss: 0.3692
+Epoch: 7900, Loss: 0.3276
+Epoch: 8000, Loss: 0.3276
+Epoch: 8100, Loss: 0.3419
+Epoch: 8200, Loss: 0.2983
+Epoch: 8300, Loss: 0.3225
+Epoch: 8400, Loss: 0.3406
+Epoch: 8500, Loss: 0.3985
+Epoch: 8600, Loss: 0.3467
+Epoch: 8700, Loss: 0.3264
+Epoch: 8800, Loss: 0.2713
+Epoch: 8900, Loss: 0.3888
+Epoch: 9000, Loss: 0.3278
+Epoch: 9100, Loss: 0.3610
+Epoch: 9200, Loss: 0.3036
+Epoch: 9300, Loss: 0.3213
+Epoch: 9400, Loss: 0.3381
+Epoch: 9500, Loss: 0.3125
+Epoch: 9600, Loss: 0.3134
+Epoch: 9700, Loss: 0.3757
+Epoch: 9800, Loss: 0.3189
+Epoch: 9900, Loss: 0.4771
+Epoch: 10000, Loss: 0.4083
+Epoch: 10100, Loss: 0.3417
+Epoch: 10200, Loss: 0.3038
+Epoch: 10300, Loss: 0.3384
+Epoch: 10400, Loss: 0.3516
+Epoch: 10500, Loss: 0.3002
+Epoch: 10600, Loss: 0.3621
+Epoch: 10700, Loss: 0.3093
+Epoch: 10800, Loss: 0.3239
+Epoch: 10900, Loss: 0.3876
+Epoch: 11000, Loss: 0.4194
+Epoch: 11100, Loss: 0.3191
+Epoch: 11200, Loss: 0.3540
+Epoch: 11300, Loss: 0.2929
+Epoch: 11400, Loss: 0.3615
+Epoch: 11500, Loss: 0.2921
+Epoch: 11600, Loss: 0.3729
+Epoch: 11700, Loss: 0.3846
+Epoch: 11800, Loss: 0.4322
+Epoch: 11900, Loss: 0.2728
+Epoch: 12000, Loss: 0.3905
+Epoch: 12100, Loss: 0.2819
+Epoch: 12200, Loss: 0.3137
+Epoch: 12300, Loss: 0.3973
+Epoch: 12400, Loss: 0.2676
+Epoch: 12500, Loss: 0.3517
+Epoch: 12600, Loss: 0.3161
+Epoch: 12700, Loss: 0.2965
+Epoch: 12800, Loss: 0.3589
+Epoch: 12900, Loss: 0.3260
+Epoch: 13000, Loss: 0.3278
+Epoch: 13100, Loss: 0.3085
+Epoch: 13200, Loss: 0.2352
+Epoch: 13300, Loss: 0.3299
+Epoch: 13400, Loss: 0.3534
+Epoch: 13500, Loss: 0.3080
+Epoch: 13600, Loss: 0.3209
+Epoch: 13700, Loss: 0.2902
+Epoch: 13800, Loss: 0.3486
+Epoch: 13900, Loss: 0.3334
+Epoch: 14000, Loss: 0.2941
+Epoch: 14100, Loss: 0.4045
+Epoch: 14200, Loss: 0.3128
+Epoch: 14300, Loss: 0.3055
+Epoch: 14400, Loss: 0.3642
+Epoch: 14500, Loss: 0.2739
+Epoch: 14600, Loss: 0.3880
+Epoch: 14700, Loss: 0.3350
+Epoch: 14800, Loss: 0.4435
+Epoch: 14900, Loss: 0.3251
+Epoch: 15000, Loss: 0.3430
+Epoch: 15100, Loss: 0.4501
+Epoch: 15200, Loss: 0.2847
+Epoch: 15300, Loss: 0.2770
+Epoch: 15400, Loss: 0.2761
+Epoch: 15500, Loss: 0.3773
+Epoch: 15600, Loss: 0.3148
+Epoch: 15700, Loss: 0.3512
+Epoch: 15800, Loss: 0.3226
+Epoch: 15900, Loss: 0.2802
+Epoch: 16000, Loss: 0.3776
+Epoch: 16100, Loss: 0.2630
+Epoch: 16200, Loss: 0.2629
+Epoch: 16300, Loss: 0.2752
+Epoch: 16400, Loss: 0.3054
+Epoch: 16500, Loss: 0.3241
+Epoch: 16600, Loss: 0.3927
+Epoch: 16700, Loss: 0.3404
+Epoch: 16800, Loss: 0.3080
+Epoch: 16900, Loss: 0.3264
+Epoch: 17000, Loss: 0.2587
+Epoch: 17100, Loss: 0.3063
+Epoch: 17200, Loss: 0.2688
+Epoch: 17300, Loss: 0.3328
+Epoch: 17400, Loss: 0.3143
+Epoch: 17500, Loss: 0.3569
+Epoch: 17600, Loss: 0.2469
+Epoch: 17700, Loss: 0.3811
+Epoch: 17800, Loss: 0.3875
+Epoch: 17900, Loss: 0.3625
+Epoch: 18000, Loss: 0.2924
+Epoch: 18100, Loss: 0.2910
+Epoch: 18200, Loss: 0.2894
+Epoch: 18300, Loss: 0.3221
+Epoch: 18400, Loss: 0.3685
+Epoch: 18500, Loss: 0.3164
+Epoch: 18600, Loss: 0.3426
+Epoch: 18700, Loss: 0.2595
+Epoch: 18800, Loss: 0.2788
+Epoch: 18900, Loss: 0.3000
+Epoch: 19000, Loss: 0.3577
+Epoch: 19100, Loss: 0.3206
+Epoch: 19200, Loss: 0.3255
+Epoch: 19300, Loss: 0.3878
+Epoch: 19400, Loss: 0.3575
+Epoch: 19500, Loss: 0.3323
+Epoch: 19600, Loss: 0.3028
+Epoch: 19700, Loss: 0.3125
+Epoch: 19800, Loss: 0.3770
+Epoch: 19900, Loss: 0.2760
+Epoch: 20000, Loss: 0.3009
+Training time in seconds:  3008
+-----------Clustering-------------
+Shape of data to PCA: (1521, 256)
+Shape of data output by PCA: (1521, 30)
+PCA recover: 0.99999946
+Shape of data to cluster: (1521, 30)
+SCI score (Clustering quality) is: 0.6572211
+```
