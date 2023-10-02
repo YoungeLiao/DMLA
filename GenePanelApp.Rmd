@@ -1,3 +1,9 @@
+---
+output: 
+  html_document: 
+    fig_width: 12
+    fig_height: 8
+---
 # Tutorial for gene panel apps utilization
 
 In this tutorial, we will demonstrate four apps that exerted the most
