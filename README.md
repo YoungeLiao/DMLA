@@ -1,5 +1,5 @@
 # DMLA
-DLMA: Discover-model-learn-advance cycle for unlocking nature as a code base, i.e. encrypting new biological mechanisms and empowering biotechnology development. 
+DLMA: [Discover-model-learn-advance cycle for unlocking nature as a code base, i.e. encrypting new biological mechanisms and empowering biotechnology development]([url](https://onlinelibrary.wiley.com/doi/10.1002/imt2.162)). 
 
 ![WetDryLab](Figures/WetDryLab.png)
 
